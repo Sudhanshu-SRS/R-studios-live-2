@@ -4,10 +4,12 @@ import LatestCollection from '../components/LatestCollection'
 import BestSeller from '../components/BestSeller'
 import OurPolicy from '../components/OurPolicy'
 import NewsletterBox from '../components/NewsletterBox'
+import Slider from '../components/Slider'
 
 const Home = () => {
   return (
     <div>
+      <Slider/>
       <Hero />
       <LatestCollection/>
       <BestSeller/>
