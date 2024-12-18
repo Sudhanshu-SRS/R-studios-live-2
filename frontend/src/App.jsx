@@ -17,6 +17,9 @@ import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
 import ResetPassword from './pages/ResetPassword'
 import EmailVerify from './pages/EmailVerify'
+import Profile from './pages/Profile';
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import Returns from './pages/Return';
 
 const App = () => {
   return (
@@ -37,6 +40,9 @@ const App = () => {
         <Route path='/verify' element={<Verify />} />
         <Route path='/emailverify' element={<EmailVerify />} />
         <Route path='resetpassword' element={<ResetPassword />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/return" element={<Returns />} />
       </Routes>
       <Footer />
     </div>
