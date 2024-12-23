@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import Title from './Title';
@@ -92,3 +93,4 @@ const Slider = ({ images }) => {
 };
 
 export default Slider;
+
