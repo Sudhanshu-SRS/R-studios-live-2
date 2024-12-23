@@ -4,7 +4,7 @@ import AdminUpload from '../components/AdminUpload';
 const AdminPage = () => {
   return (
     <div>
-      <h1>Admin Dashboard</h1>
+      <h1>Crousel Image Uploader</h1>
       <AdminUpload />
       {/* Add other admin functionalities here */}
     </div>
