@@ -28,6 +28,8 @@ const Profile = () => {
             );
             if (response.data.success) {
                 setUserData(response.data.user);
+            } else {
+                toast.error(response.data.message);
             }
         } catch (error) {
             toast.error('Failed to fetch profile');

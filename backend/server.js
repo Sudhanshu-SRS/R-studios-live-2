@@ -8,7 +8,7 @@ import productRouter from './routes/productRoute.js'
 import cartRouter from './routes/cartRoute.js'
 import orderRouter from './routes/orderRoute.js'
 import cookieParser from 'cookie-parser';
-
+import imageRouter from './routes/imageRoute.js'; // Import image routes
 // App Config
 const app = express()
 const port = process.env.PORT || 4000
@@ -25,9 +25,15 @@ app.use('/api/user',userRouter)
 app.use('/api/product',productRouter)
 app.use('/api/cart',cartRouter)
 app.use('/api/order',orderRouter)
+app.use('/api', imageRouter); // Use image routes
 
 app.get('/',(req,res)=>{
     res.send("API Working")
 })
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+  });
 
 app.listen(port, ()=> console.log('Server started on PORT : '+ port))

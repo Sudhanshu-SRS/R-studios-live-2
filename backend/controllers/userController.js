@@ -8,6 +8,42 @@ const createToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
+// Get user profile
+const getUserProfile = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await userModel.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Update user profile
+const updateUserProfile = async (req, res) => {
+  try {
+    const { userId, name, phone, address } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.name = name || user.name;
+    user.phone = phone || user.phone;
+    user.address = address || user.address;
+
+    await user.save();
+    res.json({ success: true, message: 'Profile updated successfully', user });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // Route for user login
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -282,4 +318,6 @@ export {
   isAuthenticated,
   sendResetOtp,
   resetPassword,
+  getUserProfile,
+  updateUserProfile, // Add this line
 };
