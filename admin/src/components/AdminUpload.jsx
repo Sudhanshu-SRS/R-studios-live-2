@@ -13,7 +13,7 @@ const AdminUpload = () => {
 
   const fetchImages = async () => {
     try {
-      const res = await axios.get('http://localhost:4000/api/images');
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/images`);
       if (Array.isArray(res.data)) {
         setImages(res.data);
       } else {
@@ -34,14 +34,14 @@ const AdminUpload = () => {
     setLoading(true);
     const formData = new FormData();
     formData.append('file', image);
-    formData.append('upload_preset', 'Crousel'); // Replace with your Cloudinary upload preset
+    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
     try {
-      const res = await axios.post('https://api.cloudinary.com/v1_1/dp7gtidih/image/upload', formData);
+      const res = await axios.post(import.meta.env.VITE_CLOUDINARY_UPLOAD_URL, formData);
       const imageUrl = res.data.secure_url;
 
       // Save the image URL to your database
-      await axios.post('http://localhost:4000/api/images', { url: imageUrl });
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/images`, { url: imageUrl });
 
       setLoading(false);
       alert('Image uploaded successfully');
@@ -55,7 +55,7 @@ const AdminUpload = () => {
   const handleDelete = async (imageId) => {
     console.log('Deleting image with id:', imageId); // Log the imageId
     try {
-      const res = await axios.delete(`http://localhost:4000/api/images/${imageId}`);
+      const res = await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/images/${imageId}`);
       alert('Image deleted successfully');
       fetchImages(); // Refresh the images list
     } catch (error) {
