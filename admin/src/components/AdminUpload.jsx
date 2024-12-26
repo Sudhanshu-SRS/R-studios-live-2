@@ -13,7 +13,7 @@ const AdminUpload = () => {
 
   const fetchImages = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/images`);
+      const res = await axios.get(`http://localhost:4000/api/images`);
       if (Array.isArray(res.data)) {
         setImages(res.data);
       } else {
@@ -34,14 +34,14 @@ const AdminUpload = () => {
     setLoading(true);
     const formData = new FormData();
     formData.append('file', image);
-    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+    formData.append('upload_preset', 'Crousel'); // Replace 'your_upload_preset' with your actual Cloudinary upload preset
 
     try {
-      const res = await axios.post(import.meta.env.VITE_CLOUDINARY_UPLOAD_URL, formData);
+      const res = await axios.post('https://api.cloudinary.com/v1_1/dp7gtidih/image/upload', formData);
       const imageUrl = res.data.secure_url;
 
       // Save the image URL to your database
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/images`, { url: imageUrl });
+      await axios.post(`http://localhost:4000/api/images`, { url: imageUrl });
 
       setLoading(false);
       alert('Image uploaded successfully');
@@ -55,21 +55,17 @@ const AdminUpload = () => {
   const handleDelete = async (imageId) => {
     console.log('Deleting image with id:', imageId); // Log the imageId
     try {
-      const res = await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/images/${imageId}`);
+      const res = await axios.delete(`http://localhost:4000/api/images/${imageId}`);
       alert('Image deleted successfully');
       fetchImages(); // Refresh the images list
     } catch (error) {
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
         console.error('Error response headers:', error.response.headers);
       } else if (error.request) {
-        // The request was made but no response was received
         console.error('Error request:', error.request);
       } else {
-        // Something happened in setting up the request that triggered an Error
         console.error('Error message:', error.message);
       }
       console.error('Error config:', error.config);
