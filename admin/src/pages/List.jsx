@@ -107,14 +107,14 @@ const List = ({ token }) => {
             <img className='w-12' src={item.image[0]} alt="" />
             <p>{item.name}</p>
             <p>{item.category}</p>
-            <div>
+            <div className='flex items-center'>
               <input
                 type="number"
                 value={newPrice[item._id] || item.price}
                 onChange={(e) => setNewPrice({ ...newPrice, [item._id]: e.target.value })}
                 className="border px-2 py-1"
               />
-              <button onClick={() => updatePrice(item._id)} className="ml-2 bg-blue-500 text-white px-2 py-1">Update</button>
+              <button onClick={() => updatePrice(item._id)} className="ml-2 bg-blue-500 text-white px-2 py-">Update</button>
             </div>
             <p onClick={() => removeProduct(item._id)} className='text-right md:text-center cursor-pointer text-lg'>X</p>
           </div>
