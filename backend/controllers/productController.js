@@ -86,4 +86,34 @@ const singleProduct = async (req, res) => {
     }
 }
 
-export { listProducts, addProduct, removeProduct, singleProduct }
+const updateProductPrice = async (req, res) => {
+  try {
+    const { productId, newPrice } = req.body;
+    const product = await productModel.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found.' });
+    }
+
+    product.price = newPrice;
+    await product.save();
+
+    res.status(200).json({ success: true, message: 'Price updated successfully.', product });
+  } catch (error) {
+    console.error('Error updating product price:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+const updateAllPrices = async (req, res) => {
+  try {
+    const { newPrice } = req.body;
+    await productModel.updateMany({}, { price: newPrice });
+
+    res.status(200).json({ success: true, message: 'All prices updated successfully.' });
+  } catch (error) {
+    console.error('Error updating all prices:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+export { listProducts, addProduct, removeProduct, singleProduct, updateProductPrice, updateAllPrices }
