@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary"
 import productModel from "../models/productModel.js"
-
+import mongoose from 'mongoose';
 // function for add product
 const addProduct = async (req, res) => {
     try {
@@ -58,6 +58,61 @@ const listProducts = async (req, res) => {
         res.json({ success: false, message: error.message })
     }
 }
+// function for update product
+const update = async (req, res) => {
+    try {
+        const { id, name, description, price, category, subCategory, bestseller, sizes } = req.body;
+
+        // Ensure price is a number and sizes is parsed correctly
+        const parsedPrice = Number(price);
+        const parsedSizes = sizes ? JSON.parse(sizes) : [];
+
+        // Ensure id is a valid ObjectId
+        const productId = new mongoose.Types.ObjectId(id); // Correct usage of ObjectId
+
+        const product = await productModel.findById(productId);
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found.' });
+        }
+
+        // Update the product fields
+        product.name = name || product.name;
+        product.description = description || product.description;
+        product.price = parsedPrice || product.price;
+        product.category = category || product.category;
+        product.subCategory = subCategory || product.subCategory;
+        product.bestseller = bestseller === "true" ? true : false || product.bestseller;
+        product.sizes = parsedSizes.length ? parsedSizes : product.sizes;
+
+        // Handle image uploads
+        let imagesUrl = [];
+        if (req.files) {
+            if (req.files.image1) imagesUrl.push(req.files.image1[0].path);
+            if (req.files.image2) imagesUrl.push(req.files.image2[0].path);
+            if (req.files.image3) imagesUrl.push(req.files.image3[0].path);
+            if (req.files.image4) imagesUrl.push(req.files.image4[0].path);
+        }
+
+        // Upload images to Cloudinary
+        if (imagesUrl.length > 0) {
+            let uploadedImages = await Promise.all(
+                imagesUrl.map(async (imagePath) => {
+                    let result = await cloudinary.uploader.upload(imagePath, { resource_type: 'image' });
+                    return result.secure_url;
+                })
+            );
+            product.image = uploadedImages;
+        }
+
+        // Save the product
+        await product.save();
+
+        res.status(200).json({ success: true, message: 'Product updated successfully.', product });
+    } catch (error) {
+        console.error("Error updating product:", error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
 
 // function for removing product
 const removeProduct = async (req, res) => {
@@ -116,4 +171,4 @@ const updateAllPrices = async (req, res) => {
   }
 };
 
-export { listProducts, addProduct, removeProduct, singleProduct, updateProductPrice, updateAllPrices }
+export { listProducts, addProduct, removeProduct, singleProduct, updateProductPrice, updateAllPrices, update }

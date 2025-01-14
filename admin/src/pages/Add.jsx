@@ -8,6 +8,7 @@ import { useLocation } from 'react-router-dom';
 const Add = ({ token }) => {
   const location = useLocation();
   const item = location.state?.item || {};
+  const isEdit = location.state?.isEdit || false;
 
   const [image1, setImage1] = useState(item.image1 || false);
   const [image2, setImage2] = useState(item.image2 || false);
@@ -24,10 +25,8 @@ const Add = ({ token }) => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-
     try {
       const formData = new FormData();
-
       formData.append("name", name);
       formData.append("description", description);
       formData.append("price", price);
@@ -35,18 +34,21 @@ const Add = ({ token }) => {
       formData.append("subCategory", subCategory);
       formData.append("bestseller", bestseller);
       formData.append("sizes", JSON.stringify(sizes));
-
+  
+      // Add images if selected
       image1 && formData.append("image1", image1);
       image2 && formData.append("image2", image2);
       image3 && formData.append("image3", image3);
       image4 && formData.append("image4", image4);
-
-      const response = await axios.post(
-        backendUrl + "/api/product/add",
-        formData,
-        { headers: { token } }
-      );
-
+  
+      // If editing, add the product ID
+      if (isEdit && item._id) {
+        formData.append("id", item._id);  // Pass the product ID for updates
+      }
+  
+      const url = isEdit ? `${backendUrl}/api/product/update` : `${backendUrl}/api/product/add`;
+      const response = await axios.post(url, formData, { headers: { token } });
+  
       if (response.data.success) {
         toast.success(response.data.message);
         setName("");
@@ -64,6 +66,7 @@ const Add = ({ token }) => {
       toast.error(error.message);
     }
   };
+  
 
   return (
     <form onSubmit={onSubmitHandler} className="flex flex-col w-full items-start gap-3">
@@ -147,7 +150,7 @@ const Add = ({ token }) => {
         <label className="cursor-pointer" htmlFor="bestseller">Add to bestseller</label>
       </div>
 
-      <button type="submit" className="w-28 py-3 mt-4 bg-black text-white">ADD</button>
+      <button type="submit" className="w-28 py-3 mt-4 bg-black text-white">{isEdit ? 'Update' : 'Add'}</button>
     </form>
   );
 };
