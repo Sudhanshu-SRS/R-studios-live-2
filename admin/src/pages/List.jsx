@@ -2,11 +2,13 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { backendUrl, currency } from '../App';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const List = ({ token }) => {
   const [list, setList] = useState([]);
   const [newPrice, setNewPrice] = useState({});
   const [bulkPrice, setBulkPrice] = useState('');
+  const navigate = useNavigate();
 
   const fetchList = async () => {
     try {
@@ -75,13 +77,16 @@ const List = ({ token }) => {
     }
   };
 
+  const handleEdit = (item) => {
+    navigate('/add', { state: { item } });
+  };
+
   useEffect(() => {
     fetchList();
   }, []);
 
   return (
     <>
-      
       <div className='my-4 flex '>
         <p className='mr-4'>Update all prices to:</p>
         <input
@@ -116,11 +121,11 @@ const List = ({ token }) => {
               />
               <button onClick={() => updatePrice(item._id)} className="ml-2 bg-blue-500 text-white px-2 py-">Update</button>
             </div>
+            <button onClick={() => handleEdit(item)} className="ml-2 bg-yellow-500 text-white px-2 py-">Edit</button>
             <p onClick={() => removeProduct(item._id)} className='text-right md:text-center cursor-pointer text-lg'>X</p>
           </div>
         ))}
       </div>
-     
     </>
   );
 };
