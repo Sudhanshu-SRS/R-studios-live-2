@@ -78,7 +78,7 @@ const List = ({ token }) => {
   };
 
   const handleEdit = (item) => {
-    navigate('/add', { state: { item } });
+    navigate('/add', { state: { item, isEdit: true } });
   };
 
   useEffect(() => {
@@ -87,23 +87,21 @@ const List = ({ token }) => {
 
   return (
     <>
-      <div className='my-4 flex flex-col sm:flex-row items-center justify-between'>
-        <p className='mr-4 mb-2 sm:mb-0'>Update all prices to:</p>
-        <div className='flex items-center'>
-          <input
-            type="number"
-            value={bulkPrice}
-            onChange={(e) => setBulkPrice(e.target.value)}
-            placeholder="New price for all items"
-            className="border px-2 py-1 sm:w-48 w-full mb-2 sm:mb-0"
-          />
-          <button 
-            onClick={updateAllPrices} 
-            className="ml-2 bg-green-500 text-white px-4 py-2 sm:w-auto w-full"
-          >
-            Update All Prices
-          </button>
-        </div>
+      <div className='my-4 flex '>
+        <p className='mr-4'>Update all prices to:</p>
+        <input
+          type="number"
+          value={bulkPrice}
+          onChange={(e) => setBulkPrice(e.target.value)}
+          placeholder="New price for all items"
+          className="border px-2 py-1 sm:w-48 w-full mb-2 sm:mb-0"
+        />
+        <button 
+          onClick={updateAllPrices} 
+          className="ml-2 bg-green-500 text-white rounded-3xl  px-4 py-2 sm:w-auto w-full"
+        >
+          Update All Prices
+        </button>
       </div>
       <p className='mb-2'>All Products List</p>
       <div className='flex flex-col gap-2'>
@@ -141,8 +139,8 @@ const List = ({ token }) => {
                 Edit
               </button>
               <p 
-                onClick={() => removeProduct(item._id)} 
-                className='text-right sm:text-center cursor-pointer text-lg text-red-500 hover:scale-125 w-full sm:w-auto'
+                onClick={() => removeProduct(item._id)}
+                className='text-right md:text-center cursor-pointer text-lg'
               >
                 X
               </p>
