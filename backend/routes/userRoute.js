@@ -23,7 +23,7 @@ userRouter.post('/logout', logout);
 userRouter.post('/send-verify-otp', authUser, sendverifyOtp);
 userRouter.post('/verify-Email', authUser, verifyEmail);
 userRouter.post('/is-auth', authUser, isAuthenticated);
-userRouter.post('/send-rest-otp', sendResetOtp);
+userRouter.post('/send-reset-otp', sendResetOtp);
 userRouter.post('/reset-password', resetPassword);
 userRouter.get('/profile', authUser, getUserProfile);
 userRouter.put('/profile/update', authUser, updateUserProfile); // Add this line

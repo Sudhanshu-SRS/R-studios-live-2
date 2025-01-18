@@ -1,29 +1,28 @@
-import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken';
 
 const authUser = async (req, res, next) => {
-
-    const { token } = req.headers;
-
-    if (!token) {
-        return res.json({ success: false, message: 'Not Authorized Login Again' })
-    }
-
     try {
+        const token = req.cookies.token; // Retrieve token from cookies
+        // console.log('Received Token:', token); // Log the token
 
-        const token_decode = jwt.verify(token, process.env.JWT_SECRET)
-       
-       if(token_decode.id)  {
-        req.body.userId = token_decode.id}
-        else{
-            return res.json({ success: false, message: 'Not Authorized Login Again' })
+        if (!token) {
+            return res.json({ success: false, message: 'Not Authorized. Login Again' });
         }
+
+        const token_decode = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (token_decode.id) {
+            req.body.userId = token_decode.id; // Attach userId to req.body
+        } else {
+            return res.json({ success: false, message: 'Not Authorized. Login Again' });
+        }
+
         next();
-
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+        console.error('Error in auth middleware:', error.message);
+        res.json({ success: false, message: 'Invalid or Expired Token' });
     }
+};
 
-}
 
-export default authUser
+export default authUser;

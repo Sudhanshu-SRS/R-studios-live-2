@@ -9,6 +9,7 @@ import cartRouter from './routes/cartRoute.js'
 import orderRouter from './routes/orderRoute.js'
 import cookieParser from 'cookie-parser';
 import imageRouter from './routes/imageRoute.js'; // Import image routes
+import authRouter from './routes/authRoute.js'
 // App Config
 const app = express()
 const port = process.env.PORT || 4000
@@ -25,6 +26,7 @@ app.use('/api/user',userRouter)
 app.use('/api/product',productRouter)
 app.use('/api/cart',cartRouter)
 app.use('/api/order',orderRouter)
+app.use('/api/auth',authRouter)
 app.use('/api', imageRouter); // Use image routes
 
 app.get('/',(req,res)=>{

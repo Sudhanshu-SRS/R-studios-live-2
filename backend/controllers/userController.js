@@ -64,12 +64,11 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (isMatch) {
-      const token = createToken(user._id);
-
-      res.cookie("token", createToken, {
+      const token = createToken(user._id); // Generate token
+      res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV !== "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // 'none' for HTTPS only cookies, 'lax' for HTTP and HTTPS cookies
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
       res.json({ success: true, token });
@@ -122,12 +121,11 @@ const registerUser = async (req, res) => {
 
     const user = await newUser.save();
 
-    const token = createToken(user._id);
-
-    res.cookie("token", createToken, {
+    const token = createToken(user._id); // Generate token
+    res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // 'none' for HTTPS only cookies, 'lax' for HTTP and HTTPS cookies
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -175,12 +173,13 @@ const sendverifyOtp = async (req, res) => {
     user.verifyotp = otp;
     user.verifyotpExpireAt = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
+    console.log(`OTP Sent: ${otp}, Expires At: ${user.verifyotpExpireAt}`);
 
     const mailOptions = {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: "R-Studio Verification Otp",
-      text: `Hello ${name}, Your Verification OTP is ${otp}. This OTP will expire in 24 hours.`,
+      text: `Hello ${user.name}, Your Verification OTP is ${otp}. This OTP will expire in 24 hours.`,
     };
     await transporter.sendMail(mailOptions);
     res.json({ success: true, message: "Verification Otp Sent Successfully" });
@@ -199,7 +198,10 @@ const verifyEmail = async (req, res) => {
     if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
-    if (user.verifyOtp === "" || user.verifyOtp !== otp) {
+    //   Log the OTP comparison for debugging
+    // console.log(`User OTP from DB: ${user.verifyotp}`);
+    // console.log(`Received OTP: ${otp}`);
+    if (String(user.verifyotp) !== String(otp)) {
       return res.json({ success: false, message: "Invalid Otp" });
     }
     if (user.verifyOtpExpireAt < Date.now()) {
@@ -218,7 +220,7 @@ const verifyEmail = async (req, res) => {
 //authenticated user
 const isAuthenticated = async (req, res) => {
   try {
-    return res.json({ success: true, message });
+    return res.json({ success: true, message: "User Authenticated" });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -236,7 +238,7 @@ const sendResetOtp = async (req, res) => {
       return res.json({ success: false, message: "User not found" });
     }
     const otp = String(Math.floor(100000 + Math.random() * 900000));
-    user.restOtp = otp;
+    user.resetOtp = otp;
     user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000;
     await user.save();
 
@@ -244,7 +246,7 @@ const sendResetOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: "R-Studio Password Reset Otp",
-      text: `Hello ${name}, Your Password Reset OTP is ${otp}. This OTP will expire in 15 minutes.`,
+      text: `Hello ${user.name || "user"}, Your Password Reset OTP is ${otp}. This OTP will expire in 15 minutes.`,
     };
     await transporter.sendMail(mailOptions);
     res.json({
@@ -258,11 +260,11 @@ const sendResetOtp = async (req, res) => {
 
 //Reset User Password
 const resetPassword = async (req, res) => {
-  const { email, otp, password } = req.body;
+  const { email, otp, newpassword } = req.body;
   if (!email || !otp || !newpassword) {
     return res.json({
       success: false,
-      message: "Email,Otp,Password Are Required",
+      message: "Email ,Otp And New Password Are Required",
     });
   }
   try {
@@ -277,7 +279,7 @@ const resetPassword = async (req, res) => {
       return res.json({ success: false, message: "Otp Expired" });
     }
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const hashedPassword = await bcrypt.hash(newpassword, salt);
     user.password = hashedPassword;
     user.resetOtp = "";
     user.resetOtpExpireAt = 0;
