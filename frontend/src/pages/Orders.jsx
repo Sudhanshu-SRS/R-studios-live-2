@@ -11,29 +11,46 @@ const Orders = () => {
 
   const loadOrderData = async () => {
     try {
-      if (!token) {
-        return null
-      }
+        const storedToken = token || localStorage.getItem('token');
+        
+        if (!storedToken) {
+            return null;
+        }
 
-      const response = await axios.post(backendUrl + '/api/order/userorders',{},{headers:{token}})
-      if (response.data.success) {
-        let allOrdersItem = []
-        response.data.orders.map((order)=>{
-          order.items.map((item)=>{
-            item['status'] = order.status
-            item['payment'] = order.payment
-            item['paymentMethod'] = order.paymentMethod
-            item['date'] = order.date
-            allOrdersItem.push(item)
-          })
-        })
-        setorderData(allOrdersItem.reverse())
-      }
-      
+        const response = await axios.post(
+            `${backendUrl}/api/order/userorders`,
+            {},
+            {
+                headers: {
+                    'Authorization': `Bearer ${storedToken}`,
+                    'Content-Type': 'application/json'
+                },
+                withCredentials: true
+            }
+        );
+
+        if (response.data.success) {
+            let allOrdersItem = [];
+            response.data.orders.forEach((order) => {
+                order.items.forEach((item) => {
+                    item.status = order.status;
+                    item.payment = order.payment;
+                    item.paymentMethod = order.paymentMethod;
+                    item.date = order.date;
+                    allOrdersItem.push(item);
+                });
+            });
+            setorderData(allOrdersItem.reverse());
+        }
     } catch (error) {
-      
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('token');
+            setToken(null);
+            navigate('/login');
+        }
+        console.error("Orders fetch error:", error);
     }
-  }
+};
 
   useEffect(()=>{
     loadOrderData()

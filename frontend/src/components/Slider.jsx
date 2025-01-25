@@ -1,18 +1,35 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import Title from './Title';
 
 const Slider = ({ images }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const imageRef = useRef(null);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        goToPrevious();
+      } else if (e.key === 'ArrowRight') {
+        goToNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 3000); // Change image every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [images.length]);
+    if (!paused) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+      }, 4000); // Change image every 4 seconds
+      return () => clearInterval(interval);
+    }
+  }, [images.length, paused]);
 
   const goToPrevious = () => {
     setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
@@ -26,11 +43,15 @@ const Slider = ({ images }) => {
     setCurrentIndex(index);
   };
 
+  // Enhanced swipe handlers
   const handlers = useSwipeable({
     onSwipedLeft: goToNext,
     onSwipedRight: goToPrevious,
     preventDefaultTouchmoveEvent: true,
-    trackMouse: true, // Enable mouse tracking for swipe
+    trackMouse: true, // Enable mouse swipe
+    trackTouch: true, // Enable touch swipe
+    delta: 50, // Minimum swipe distance
+    swipeDuration: 500, // Maximum time for swipe gesture
   });
 
   if (!Array.isArray(images)) {
@@ -38,53 +59,117 @@ const Slider = ({ images }) => {
   }
 
   return (
-    <div className='relative h-[800px] flex flex-col items-center justify-center mb-8 group' {...handlers}>
+    <div
+      className='relative w-full h-[800px] overflow-hidden group'
+      {...handlers} // Apply swipe handlers
+      onMouseEnter={() => {
+        setPaused(true);
+        setIsHovering(true);
+      }}
+      onMouseLeave={() => {
+        setPaused(false);
+        setIsHovering(false);
+      }}
+    >
       <div className="text-center py-8 text-3xl">
-      <Title text1={"WHAT'S"} text2={"YOUR VIBE"} />
-      {/* <p className="w-3/4 m-auto text-xs sm:text-sm md:text-base text-gray-600">
-          Choose Your Divine Look
-        </p> */}
-        </div>
-        
-      <div className='overflow-hidden w-full h-full'>
+        <Title text1={"WHAT'S"} text2={"YOUR VIBE"} />
+      </div>
+
+      {/* Slider Image Container */}
+      <div className='relative w-full h-full'>
         <div
-          className='flex transition-transform duration-1000 ease-in-out'
+          className='flex transition-transform duration-700 ease-in-out'
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
           {images.map((image, index) => (
-            <img
-              key={index}
-              src={image.url}
-              className='w-full h-full object-cover'
-              alt={`Slide ${index}`}
-            />
+            <div key={index} className='w-full flex-shrink-0 relative'>
+              <img
+                src={image.url}
+                className='w-full h-full object-cover'
+                alt={`Slide ${index}`}
+              />
+              {/* Gradient Overlay for text */}
+              <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-black to-transparent text-white flex items-end p-4">
+                <p className="text-lg font-medium">Slide {index + 1}</p>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
-      <div className='absolute inset-0 flex justify-between items-center'>
-        <div className='w-1/2 h-full flex items-center justify-start hover:bg-transparent'>
+
+        {/* Move navigation buttons inside the image container */}
+        <div className='absolute top-1/2 -translate-y-1/2 left-0 right-0 flex items-center justify-between px-8 pointer-events-none'>
           <button
             onClick={goToPrevious}
-            className='bg-gray-800 text-white px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'
+            className={`
+              pointer-events-auto
+              ${isHovering ? 'opacity-100' : 'opacity-0'}
+              transition-all duration-500 ease-in-out
+              bg-white/20 backdrop-blur-md 
+              hover:bg-white/30
+              text-white w-12 h-12
+              rounded-full shadow-lg 
+              flex items-center justify-center
+              hover:scale-110 hover:shadow-2xl
+              border border-white/30
+              group
+            `}
+            aria-label="Previous slide"
           >
-            &#9664; {/* Left arrow */}
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-6 w-6 transform transition-transform group-hover:-translate-x-1" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
-        </div>
-        <div className='w-1/2 h-full flex items-center justify-end hover:bg-transparent'>
+          
           <button
             onClick={goToNext}
-            className='bg-gray-800 text-white px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'
+            className={`
+              pointer-events-auto
+              ${isHovering ? 'opacity-100' : 'opacity-0'}
+              transition-all duration-500 ease-in-out
+              bg-white/20 backdrop-blur-md 
+              hover:bg-white/30
+              text-white w-12 h-12
+              rounded-full shadow-lg 
+              flex items-center justify-center
+              hover:scale-110 hover:shadow-2xl
+              border border-white/30
+              group
+            `}
+            aria-label="Next slide"
           >
-            &#9654; {/* Right arrow */}
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-6 w-6 transform transition-transform group-hover:translate-x-1" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>
-      <div className='absolute bottom-4 flex justify-center w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+
+      {/* Navigation Dots */}
+      <div className='absolute bottom-6 flex justify-center w-full gap-2'>
         {images.map((_, index) => (
-          <div
+          <button
             key={index}
             onClick={() => goToIndex(index)}
-            className={`w-3 h-3 mx-1 rounded-full cursor-pointer ${index === currentIndex ? 'bg-gray-800' : 'bg-gray-400'}`}
+            className={`
+              w-2.5 h-2.5 rounded-full 
+              transition-all duration-300 ease-in-out
+              ${index === currentIndex ? 
+                'bg-white w-8 scale-110 shadow-white/50 shadow-lg' : 
+                'bg-white/50 hover:bg-white/80'}
+            `}
+            aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
@@ -93,4 +178,3 @@ const Slider = ({ images }) => {
 };
 
 export default Slider;
-

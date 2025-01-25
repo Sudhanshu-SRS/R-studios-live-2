@@ -50,7 +50,7 @@ const Orders = ({ token }) => {
         {orders.length > 0 ? (
           orders.map((order, index) => (
             <div
-              className='grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_1fr] lg:grid-cols-[0.5fr_2fr_1fr_1fr_1fr] gap-3 items-start border-2 border-gray-200 p-5 md:p-8 my-3 md:my-4 text-xs sm:text-sm text-gray-700'
+              className='grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_1fr_1fr_1fr] gap-3 items-start border-2 border-gray-200 p-5 md:p-8 my-3 md:my-4 text-xs sm:text-sm text-gray-700'
               key={index}
             >
               <img className='w-12' src={assets.parcel_icon} alt="" />
@@ -80,7 +80,12 @@ const Orders = ({ token }) => {
                 <p className='text-sm sm:text-[15px]'>Items : {order.items.length}</p>
                 <p className='mt-3'>Method : {order.paymentMethod}</p>
                 <p>Payment : {order.payment ? 'Done' : 'Pending'}</p>
-                <p>Date : {new Date(order.date).toLocaleDateString()}</p>
+                <p>Date : {new Date(order.date).toLocaleDateString('en-GB', {
+                  day: '2-digit',   // Ensures 2 digits for day
+                  month: '2-digit', // Ensures 2 digits for month
+                  year: 'numeric',  // Full year
+                  timeZone: 'UTC'   // Add this to ensure consistent date handling
+                })}</p>
               </div>
               <p className='text-sm sm:text-[15px]'>{currency}{order.amount}</p>
               <select onChange={(event) => statusHandler(event, order._id)} value={order.status} className='p-2 font-semibold'>

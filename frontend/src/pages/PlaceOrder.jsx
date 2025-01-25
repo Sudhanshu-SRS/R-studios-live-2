@@ -9,7 +9,7 @@ import { toast } from 'react-toastify'
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
-    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products } = useContext(ShopContext);
+    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, userData } = useContext(ShopContext);
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -33,97 +33,129 @@ const PlaceOrder = () => {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID,
             amount: order.amount,
             currency: order.currency,
-            name:'Order Payment',
-            description:'Order Payment',
+            name: 'Order Payment',
+            description: 'Order Payment',
             order_id: order.id,
             receipt: order.receipt,
             handler: async (response) => {
-                console.log(response)
+                // console.log('Razorpay Response:', response);
                 try {
-                    
-                    const { data } = await axios.post(backendUrl + '/api/order/verifyRazorpay',response,{headers:{token}})
-                    if (data.success) {
-                        navigate('/orders')
-                        setCartItems({})
+                    const verifyResponse = await axios.post(
+                        `${backendUrl}/api/order/verifyRazorpay`,
+                        {
+                            ...response,
+                            userId: userData?._id,
+                            orderId: response.razorpay_order_id
+                        },
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            withCredentials: true
+                        }
+                    );
+
+                    if (verifyResponse.data.success) {
+                        setCartItems({});
+                        toast.success('Payment successful');
+                        navigate('/orders');
+                    } else {
+                        toast.error('Payment verification failed');
+                        navigate('/cart');
                     }
                 } catch (error) {
-                    console.log(error)
-                    toast.error(error)
-                }
-            }
-        }
-        const rzp = new window.Razorpay(options)
-        rzp.open()
-    }
-
-    const onSubmitHandler = async (event) => {
-        event.preventDefault()
-        try {
-
-            let orderItems = []
-
-            for (const items in cartItems) {
-                for (const item in cartItems[items]) {
-                    if (cartItems[items][item] > 0) {
-                        const itemInfo = structuredClone(products.find(product => product._id === items))
-                        if (itemInfo) {
-                            itemInfo.size = item
-                            itemInfo.quantity = cartItems[items][item]
-                            orderItems.push(itemInfo)
-                        }
+                    // console.error('Payment verification error:', error);
+                    if (error?.response?.status === 401) {
+                        localStorage.removeItem('token');
+                        setToken(null);
+                        toast.error('Session expired. Please login again');
+                        navigate('/login');
+                    } else {
+                        toast.error('Payment verification failed');
+                        navigate('/cart');
                     }
                 }
             }
+        };
 
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+    };
+
+    const onSubmitHandler = async (event) => {
+        event.preventDefault();
+        try {
+            const storedToken = token || localStorage.getItem('token');
+            
+            if (!storedToken) {
+                toast.error('Please login to place order');
+                navigate('/login');
+                return;
+            }
+    
+            let orderItems = [];
+            // ... rest of your order items logic
+    
             let orderData = {
                 address: formData,
                 items: orderItems,
                 amount: getCartAmount() + delivery_fee
-            }
-            
-
+            };
+    
+            const headers = {
+                'Authorization': `Bearer ${storedToken}`,
+                'Content-Type': 'application/json'
+            };
+    
             switch (method) {
-
-                // API Calls for COD
                 case 'cod':
-                    const response = await axios.post(backendUrl + '/api/order/place',orderData,{headers:{token}})
+                    const response = await axios.post(
+                        `${backendUrl}/api/order/place`, 
+                        orderData,
+                        { headers, withCredentials: true }
+                    );
                     if (response.data.success) {
-                        setCartItems({})
-                        navigate('/orders')
-                    } else {
-                        toast.error(response.data.message)
+                        setCartItems({});
+                        navigate('/orders');
+                        toast.success('Order placed successfully');
                     }
                     break;
-
+    
                 case 'stripe':
-                    const responseStripe = await axios.post(backendUrl + '/api/order/stripe',orderData,{headers:{token}})
+                    const responseStripe = await axios.post(
+                        `${backendUrl}/api/order/stripe`,
+                        orderData,
+                        { headers, withCredentials: true }
+                    );
                     if (responseStripe.data.success) {
-                        const {session_url} = responseStripe.data
-                        window.location.replace(session_url)
-                    } else {
-                        toast.error(responseStripe.data.message)
+                        window.location.replace(responseStripe.data.session_url);
                     }
                     break;
-
+    
                 case 'razorpay':
-
-                    const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, {headers:{token}})
+                    const responseRazorpay = await axios.post(
+                        `${backendUrl}/api/order/razorpay`,
+                        orderData,
+                        { headers, withCredentials: true }
+                    );
                     if (responseRazorpay.data.success) {
-                        initPay(responseRazorpay.data.order)
+                        initPay(responseRazorpay.data.order);
                     }
-
-                    break;
-
-                default:
                     break;
             }
-
-
         } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+            if (error?.response?.status === 401) {
+                localStorage.removeItem('token');
+                setToken(null);
+                toast.error('Session expired. Please login again');
+                navigate('/login');
+            } else {
+                toast.error(error?.response?.data?.message || 'Failed to place order');
+            }
+            console.error("Order placement error:", error);
         }
-    }
+    };
 
 
     return (

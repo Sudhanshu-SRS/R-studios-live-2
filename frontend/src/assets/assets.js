@@ -21,7 +21,6 @@ import razorpay_logo from "./razorpay_logo.png";
 import stripe_logo from "./stripe_logo.png";
 import cross_icon from "./cross_icon.png";
 //import Slider_img from "./slider_img.jpg";
-
 export const assets = {
   logo,
   //hero_img,
@@ -44,6 +43,8 @@ export const assets = {
   stripe_logo,
   cross_icon,
   //Slider_img,
+
+  
 };
 
 export const products = [

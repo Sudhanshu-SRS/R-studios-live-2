@@ -1,174 +1,271 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState,useRef, useContext } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import axios from 'axios'
+import axios from "axios";
 
 export const ShopContext = createContext();
 
 const ShopContextProvider = (props) => {
-
-    const currency = '₹';
+    const currency = "₹";
     const delivery_fee = 150;
-    const backendUrl = import.meta.env.VITE_BACKEND_URL
-    const [search, setSearch] = useState('');
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+    const [search, setSearch] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
-    const [token, setToken] = useState('')
+    const [token, setToken] = useState(localStorage.getItem("token") || "");
+    const [userData, setUserData] = useState(null);
+    const [isVerified, setIsVerified] = useState(false);
+    const [showVerifyPopup, setShowVerifyPopup] = useState(false);
+    const popupTimerRef = useRef(null); // Add ref for timer
     const navigate = useNavigate();
 
+    const getUserData = async () => {
+        try {
+            const storedToken = token || localStorage.getItem("token");
+            if (!storedToken) return;
 
+            const response = await axios.get(`${backendUrl}/api/user/profile`, {
+                headers: {
+                    Authorization: `Bearer ${storedToken}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            });
+
+            if (response.data.success) {
+                setUserData(response.data.user);
+                setIsVerified(response.data.user.isAccountVerified);
+                return response.data.user;
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            if (error?.response?.status === 401) {
+                localStorage.removeItem("token");
+                setToken(null);
+            }
+        }
+    };
+
+    // Add product to the cart
     const addToCart = async (itemId, size) => {
-
-        if (!size) {
-            toast.error('Select Product Size');
+        if (!token) {
+            toast.error("Please login to add items to cart");
+            navigate("/login");
             return;
         }
 
-        let cartData = structuredClone(cartItems);
+        if (!size) {
+            toast.error("Select Product Size");
+            return;
+        }
 
-        if (cartData[itemId]) {
-            if (cartData[itemId][size]) {
-                cartData[itemId][size] += 1;
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/cart/add`,
+                { itemId, size },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    withCredentials: true,
+                }
+            );
+
+            if (response.data.success) {
+                const cartData = structuredClone(cartItems);
+                cartData[itemId] = cartData[itemId] || {};
+                cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
+                setCartItems(cartData);
+                toast.success("Item added to cart successfully");
             }
-            else {
-                cartData[itemId][size] = 1;
+        } catch (error) {
+            if (error?.response?.status === 401) {
+                localStorage.removeItem("token");
+                setToken(null);
+                navigate("/login");
             }
+            console.error("Add to cart error:", error);
+            toast.error("Failed to add item to cart");
         }
-        else {
-            cartData[itemId] = {};
-            cartData[itemId][size] = 1;
-        }
+    };
+
+    // Get total cart item count
+    const getCartCount = () => {
+        return Object.values(cartItems).reduce(
+            (total, item) =>
+                total + Object.values(item).reduce((sum, count) => sum + count, 0),
+            0
+        );
+    };
+
+    // Update product quantity in cart
+    const updateQuantity = async (itemId, size, quantity) => {
+        const cartData = structuredClone(cartItems);
+        cartData[itemId][size] = quantity;
         setCartItems(cartData);
 
         if (token) {
             try {
-
-                await axios.post(backendUrl + '/api/cart/add', { itemId, size }, { headers: { token } })
-                toast.success('Item added to cart successfully');
-
+                await axios.post(
+                    `${backendUrl}/api/cart/update`,
+                    { itemId, size, quantity },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
             } catch (error) {
-                console.log(error)
-                toast.error(error.message)
-            }
-        }else {
-            toast.success('Item added to cart successfully');
-        }
-
-    }
-
-    const getCartCount = () => {
-        let totalCount = 0;
-        for (const items in cartItems) {
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalCount += cartItems[items][item];
-                    }
-                } catch (error) {
-
-                }
+                console.error(error);
+                toast.error(error.message);
             }
         }
-        return totalCount;
-    }
+    };
 
-    const updateQuantity = async (itemId, size, quantity) => {
-
-        let cartData = structuredClone(cartItems);
-
-        cartData[itemId][size] = quantity;
-
-        setCartItems(cartData)
-
-        if (token) {
-            try {
-
-                await axios.post(backendUrl + '/api/cart/update', { itemId, size, quantity }, { headers: { token } })
-
-            } catch (error) {
-                console.log(error)
-                toast.error(error.message)
-            }
-        }
-
-    }
-
+    // Calculate the total cart amount
     const getCartAmount = () => {
-        let totalAmount = 0;
-        for (const items in cartItems) {
-            let itemInfo = products.find((product) => product._id === items);
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalAmount += itemInfo.price * cartItems[items][item];
-                    }
-                } catch (error) {
+        return Object.entries(cartItems).reduce((total, [itemId, sizes]) => {
+            const product = products.find((p) => p._id === itemId);
+            return (
+                total +
+                Object.entries(sizes).reduce(
+                    (subtotal, [size, count]) => subtotal + (product?.price || 0) * count,
+                    0
+                )
+            );
+        }, 0);
+    };
 
-                }
-            }
-        }
-        return totalAmount;
-    }
-
+    // Fetch product data from the backend
     const getProductsData = async () => {
         try {
-
-            const response = await axios.get(backendUrl + '/api/product/list')
+            const response = await axios.get(`${backendUrl}/api/product/list`);
             if (response.data.success) {
-                setProducts(response.data.products.reverse())
+                setProducts(response.data.products.reverse());
             } else {
-                toast.error(response.data.message)
-            }
-
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        }
-    }
-
-    const getUserCart = async ( token ) => {
-        try {
-            
-            const response = await axios.post(backendUrl + '/api/cart/get',{},{headers:{token}})
-            if (response.data.success) {
-                setCartItems(response.data.cartData)
+                toast.error(response.data.message);
             }
         } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+            console.error(error);
+            toast.error(error.message);
         }
-    }
+    };
 
+    // Token persistence: Sync state with localStorage
     useEffect(() => {
-        getProductsData()
-    }, [])
-
-    useEffect(() => {
-        if (!token && localStorage.getItem('token')) {
-            setToken(localStorage.getItem('token'))
-            getUserCart(localStorage.getItem('token'))
-        }
         if (token) {
-            getUserCart(token)
+            localStorage.setItem("token", token);
+        } else {
+            localStorage.removeItem("token");
         }
-    }, [token])
+    }, [token]);
+
+    // Check authentication state on mount and token change
+    useEffect(() => {
+        if (token) {
+            getUserData();
+            getUserCart(token);
+        }
+    }, [token]);
+
+    // Fetch the user cart from the backend
+    const getUserCart = async (token) => {
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/cart/get`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    withCredentials: true,
+                }
+            );
+
+            if (response.data.success) {
+                setCartItems(response.data.cartData);
+            }
+        } catch (error) {
+            if (error?.response?.status === 401) {
+                localStorage.removeItem("token");
+                setToken(null);
+                navigate("/login");
+            }
+            console.error("Cart fetch error:", error);
+        }
+    };
+
+    // Fetch products on mount
+    useEffect(() => {
+        getProductsData();
+    }, []);
+    const handleVerifyPopup = () => {
+        // Clear any existing timer
+        if (popupTimerRef.current) {
+            clearTimeout(popupTimerRef.current);
+        }
+
+        // Close the popup
+        setShowVerifyPopup(false);
+
+        // Set new timer only if user is unverified
+        if (userData && !userData.isAccountVerified) {
+            popupTimerRef.current = setTimeout(() => {
+                setShowVerifyPopup(true);
+            }, 3 * 60 * 1000); // 3 minutes
+        }
+    };
+     
+    // Check verification status on mount and userData changes
+    useEffect(() => {
+        if (userData && !userData.isAccountVerified && !showVerifyPopup) {
+            setShowVerifyPopup(true);
+        }
+    }, [userData]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (popupTimerRef.current) {
+                clearTimeout(popupTimerRef.current);
+            }
+        };
+    }, []);
+    // Lifecycle: Trigger verification popup if account is not verified
+    useEffect(() => {
+        let popupTimer;
+        if (userData && !userData.isAccountVerified && !showVerifyPopup) {
+            popupTimer = setTimeout(() => {
+                setShowVerifyPopup(true);
+            }, 3 * 60 * 1000); // 3 minutes
+        }
+        return () => clearTimeout(popupTimer);
+    }, [userData, showVerifyPopup]);
 
     const value = {
-        products, currency, delivery_fee,
-        search, setSearch, showSearch, setShowSearch,
-        cartItems, addToCart,setCartItems,
-        getCartCount, updateQuantity,
-        getCartAmount, navigate, backendUrl,
-        setToken, token
-    }
+        products,
+        currency,
+        delivery_fee,
+        search,
+        setSearch,
+        showSearch,
+        setShowSearch,
+        cartItems,
+        addToCart,
+        setCartItems,
+        getCartCount,
+        updateQuantity,
+        getCartAmount,
+        navigate,
+        backendUrl,
+        setToken,
+        token,
+        getUserData,
+        userData,
+        setUserData,
+        isVerified,
+        showVerifyPopup,
+        setShowVerifyPopup,handleVerifyPopup
+    };
 
-    return (
-        <ShopContext.Provider value={value}>
-            {props.children}
-        </ShopContext.Provider>
-    )
-
-}
+    return <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>;
+};
 
 export default ShopContextProvider;

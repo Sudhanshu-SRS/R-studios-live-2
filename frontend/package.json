@@ -14,9 +14,12 @@
     "firebase": "^11.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-draggable": "^4.4.6",
     "react-router-dom": "^6.26.1",
+    "react-spring": "^9.7.5",
     "react-swipeable": "^7.0.2",
-    "react-toastify": "^10.0.5"
+    "react-toastify": "^10.0.5",
+    "three": "^0.172.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
