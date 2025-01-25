@@ -18,13 +18,102 @@ const Add = ({ token }) => {
   const [name, setName] = useState(item.name || "");
   const [description, setDescription] = useState(item.description || "");
   const [price, setPrice] = useState(item.price || "");
-  const [category, setCategory] = useState(item.category || "Men");
-  const [subCategory, setSubCategory] = useState(item.subCategory || "Topwear");
+  const [category, setCategory] = useState(item.category || "None");
+  const [subCategory, setSubCategory] = useState(item.subCategory || "None");
   const [bestseller, setBestseller] = useState(item.bestseller || false);
   const [sizes, setSizes] = useState(item.sizes || []);
+  const [loading, setLoading] = useState(false);
+
+  const categoryOptions = [
+    { value: "None", label: "Select Category" },
+    { value: "Men", label: "Men" },
+    { value: "Women", label: "Women" },
+    { value: "Bride And Groom", label: "Bride And Groom" },
+    { value: "Lehenga", label: "Lehenga" },
+    { value: "Kurti", label: "Kurti" },
+    { value: "Saree", label: "Saree" },
+    { value: "Onepiece", label: "Onepiece" },
+  ];
+
+  const getSubCategories = (selectedCategory) => {
+    switch(selectedCategory) {
+      case "Men":
+        return [
+          { value: "None", label: "Select Sub Category" },
+          { value: "Casual", label: "Casual" },
+          { value: "Designer", label: "Designer" },
+          { value: "Formal", label: "Formal" }
+        ];
+      case "Women":
+        return [
+          { value: "None", label: "Select Sub Category" },
+          { value: "Casual", label: "Casual" },
+          { value: "Designer", label: "Designer" },
+          { value: "Formal", label: "Formal" }
+        ];
+      case "Lehenga":
+        return [
+          { value: "None", label: "Select Sub Category" },
+          { value: "SiderLehenga", label: "Sider Lehenga" },
+          { value: "DesignerLehenga", label: "Designer Lehenga" },
+          { value: "BridalLehenga", label: "Bridal Lehenga" },
+          { value: "PartyWearLehenga", label: "Party Wear Lehenga" }
+        ];
+      case "Kurti":
+        return [
+          { value: "None", label: "Select Sub Category" },
+          { value: "SiderKurti", label: "Sider Kurti" },
+          { value: "DesignerKurti", label: "Designer Kurti" },
+          { value: "BridalKurti", label: "Bridal Kurti" },
+          { value: "PartyWearKurti", label: "Party Wear Kurti" }
+        ];
+      case "Saree":
+        return [
+          { value: "None", label: "Select Sub Category" },
+          { value: "SiderSaree", label: "Sider Saree" },
+          { value: "DesignerSaree", label: "Designer Saree" },
+          { value: "BridalSaree", label: "Bridal Saree" },
+          { value: "PartyWearSaree", label: "Party Wear Saree" }
+        ];
+      case "Onepiece":
+        return [
+          { value: "None", label: "Select Sub Category" },
+          { value: "SiderOnepiece", label: "Sider Onepiece" },
+          { value: "DesignerOnepiece", label: "Designer Onepiece" },
+          { value: "BridalOnepiece", label: "Bridal Onepiece" },
+          { value: "PartyWearOnepiece", label: "Party Wear Onepiece" }
+        ];
+      default:
+        return [{ value: "None", label: "Select Sub Category" }];
+    }
+  };
+
+  const toastConfig = {
+    position: "top-center",
+    autoClose: 3000,
+    hideProgressBar: true,
+    closeButton: false
+  };
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+
+    if (category === "None") {
+      toast.error("Please select a category", toastConfig);
+      return;
+    }
+
+    if (subCategory === "None") {
+      toast.error("Please select a sub-category", toastConfig);
+      return;
+    }
+
+    if (!image1) {
+      toast.error("At least one image is required", toastConfig);
+      return;
+    }
+
+    setLoading(true);
     try {
       const formData = new FormData();
       formData.append("name", name);
@@ -34,23 +123,26 @@ const Add = ({ token }) => {
       formData.append("subCategory", subCategory);
       formData.append("bestseller", bestseller);
       formData.append("sizes", JSON.stringify(sizes));
-  
-      // Add images if selected
+
       image1 && formData.append("image1", image1);
       image2 && formData.append("image2", image2);
       image3 && formData.append("image3", image3);
       image4 && formData.append("image4", image4);
-  
-      // If editing, add the product ID
+
       if (isEdit && item._id) {
-        formData.append("id", item._id);  // Pass the product ID for updates
+        formData.append("id", item._id);
       }
-  
-      const url = isEdit ? `${backendUrl}/api/product/update` : `${backendUrl}/api/product/add`;
+
+      const url = isEdit 
+        ? `${backendUrl}/api/product/update` 
+        : `${backendUrl}/api/product/add`;
+
       const response = await axios.post(url, formData, { headers: { token } });
-  
+
+      setLoading(false);
+
       if (response.data.success) {
-        toast.success(response.data.message);
+        toast.success(response.data.message, toastConfig);
         setName("");
         setDescription("");
         setImage1(false);
@@ -58,99 +150,135 @@ const Add = ({ token }) => {
         setImage3(false);
         setImage4(false);
         setPrice("");
+        setCategory("None");
+        setSubCategory("None");
+        setBestseller(false);
+        setSizes([]);
       } else {
-        toast.error(response.data.message);
+        toast.error(response.data.message, toastConfig);
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      setLoading(false);
+      toast.error(error?.response?.data?.message || "Something went wrong", toastConfig);
+      console.error("Error adding/updating product:", error);
     }
   };
-  
 
   return (
-    <form onSubmit={onSubmitHandler} className="flex flex-col w-full items-start gap-3">
-      <div>
-        <p className="mb-2">Upload Image</p>
-        <div className="flex gap-2">
-          <label htmlFor="image1">
-            <img className="w-20" src={!image1 ? assets.upload_area : URL.createObjectURL(image1)} alt="" />
-            <input onChange={(e) => setImage1(e.target.files[0])} type="file" id="image1" hidden />
+    <form onSubmit={onSubmitHandler} className="flex flex-col w-full items-center gap-6 py-6 px-4 bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold text-gray-700 mb-4">{isEdit ? "Edit Product" : "Add Product"}</h2>
+
+      {/* Image upload */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
+        {[image1, image2, image3, image4].map((image, index) => (
+          <label key={index} className="w-full h-24 bg-gray-200 flex items-center justify-center rounded-md cursor-pointer">
+            <img className="w-full h-full object-cover rounded-md" src={!image ? assets.upload_area : URL.createObjectURL(image)} alt={`image ${index + 1}`} />
+            <input onChange={(e) => {
+              if (index === 0) setImage1(e.target.files[0]);
+              if (index === 1) setImage2(e.target.files[0]);
+              if (index === 2) setImage3(e.target.files[0]);
+              if (index === 3) setImage4(e.target.files[0]);
+            }} type="file" hidden />
           </label>
-          <label htmlFor="image2">
-            <img className="w-20" src={!image2 ? assets.upload_area : URL.createObjectURL(image2)} alt="" />
-            <input onChange={(e) => setImage2(e.target.files[0])} type="file" id="image2" hidden />
-          </label>
-          <label htmlFor="image3">
-            <img className="w-20" src={!image3 ? assets.upload_area : URL.createObjectURL(image3)} alt="" />
-            <input onChange={(e) => setImage3(e.target.files[0])} type="file" id="image3" hidden />
-          </label>
-          <label htmlFor="image4">
-            <img className="w-20" src={!image4 ? assets.upload_area : URL.createObjectURL(image4)} alt="" />
-            <input onChange={(e) => setImage4(e.target.files[0])} type="file" id="image4" hidden />
-          </label>
-        </div>
+        ))}
       </div>
 
-      <div className="w-full">
-        <p className="mb-2">Product name</p>
-        <input onChange={(e) => setName(e.target.value)} value={name} className="w-full max-w-[500px] px-3 py-2" type="text" placeholder="Type here" required />
+      {/* Product name */}
+      <div className="w-full mb-4">
+        <p className="mb-2 text-gray-600">Product Name</p>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter product name"
+          required
+        />
       </div>
 
-      <div className="w-full">
-        <p className="mb-2">Product description</p>
-        <textarea onChange={(e) => setDescription(e.target.value)} value={description} className="w-full max-w-[500px] px-3 py-2" type="text" placeholder="Write content here" required />
+      {/* Product description */}
+      <div className="w-full mb-4">
+        <p className="mb-2 text-gray-600">Product Description</p>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter product description"
+          required
+        />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
+      {/* Product price */}
+      <div className="w-full mb-4">
+        <p className="mb-2 text-gray-600">Product Price</p>
+        <input
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter price"
+        />
+      </div>
+
+      {/* Category and Sub-category */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-4">
         <div>
-          <p className="mb-2">Product category</p>
-          <select onChange={(e) => setCategory(e.target.value)} value={category} className="w-full px-3 py-2">
-            <option value="Men">Men</option>
-            <option value="Women">Women</option>
-            <option value="Bride And Groom">Bride And Groom</option>
+          <p className="mb-2 text-gray-600">Category</p>
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setSubCategory("None"); // Reset subcategory when category changes
+            }}
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {categoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
         <div>
-          <p className="mb-2">Sub category</p>
-          <select onChange={(e) => setSubCategory(e.target.value)} value={subCategory} className="w-full px-3 py-2">
-            <option value="Casual">Casual</option>
-            <option value="Designer">Designer</option>
-            <option value="Formal">Formal</option>
+          <p className="mb-2 text-gray-600">Sub-category</p>
+          <select
+            value={subCategory}
+            onChange={(e) => setSubCategory(e.target.value)}
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={category === "None"}
+          >
+            {getSubCategories(category).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      <div>
-        <p className="mb-2">Product Price</p>
-        <input onChange={(e) => setPrice(e.target.value)} value={price} className="w-full px-3 py-2 sm:w-[120px]" type="Number" placeholder="Rupees" />
+      {/* Bestseller checkbox */}
+      <div className="flex gap-2 items-center mb-4">
+        <input
+          type="checkbox"
+          id="bestseller"
+          onChange={() => setBestseller((prev) => !prev)}
+          checked={bestseller}
+          className="h-5 w-5"
+        />
+        <label htmlFor="bestseller" className="text-gray-600">Add to bestseller</label>
       </div>
 
-      <div>
-        <p className="mb-2">Product Sizes</p>
-        <div className="flex gap-3">
-          <div onClick={() => setSizes((prev) => prev.includes("S") ? prev.filter((item) => item !== "S") : [...prev, "S"])}>
-            <p className={`${sizes.includes("S") ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer`}>S</p>
-          </div>
-          <div onClick={() => setSizes((prev) => prev.includes("M") ? prev.filter((item) => item !== "M") : [...prev, "M"])}>
-            <p className={`${sizes.includes("M") ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer`}>M</p>
-          </div>
-          <div onClick={() => setSizes((prev) => prev.includes("L") ? prev.filter((item) => item !== "L") : [...prev, "L"])}>
-            <p className={`${sizes.includes("L") ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer`}>L</p>
-          </div>
-          <div onClick={() => setSizes((prev) => prev.includes("XL") ? prev.filter((item) => item !== "XL") : [...prev, "XL"])}>
-            <p className={`${sizes.includes("XL") ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer`}>XL</p>
-          </div>
-        </div>
+      {/* Submit button */}
+      <div className="w-full">
+        <button
+          type="submit"
+          className="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 ease-in-out"
+          disabled={loading}
+        >
+          {loading ? 'Submitting...' : (isEdit ? 'Update Product' : 'Add Product')}
+        </button>
       </div>
-
-      <div className="flex gap-2 mt-2">
-        <input onChange={() => setBestseller((prev) => !prev)} checked={bestseller} type="checkbox" id="bestseller" />
-        <label className="cursor-pointer" htmlFor="bestseller">Add to bestseller</label>
-      </div>
-
-      <button type="submit" className="w-28 py-3 mt-4 bg-black text-white">{isEdit ? 'Update' : 'Add'}</button>
     </form>
   );
 };
