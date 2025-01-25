@@ -93,21 +93,36 @@ const PlaceOrder = () => {
                 navigate('/login');
                 return;
             }
-    
+
             let orderItems = [];
-            // ... rest of your order items logic
-    
+            for (const items in cartItems) {
+                for (const size in cartItems[items]) {
+                    const product = products.find(p => p._id === items);
+                    if (product && cartItems[items][size] > 0) {
+                        orderItems.push({
+                            _id: product._id,
+                            name: product.name,
+                            image: product.image,
+                            price: product.price,
+                            size: size,
+                            quantity: cartItems[items][size]
+                        });
+                    }
+                }
+            }
+
             let orderData = {
-                address: formData,
+                userId: userData?._id,
                 items: orderItems,
-                amount: getCartAmount() + delivery_fee
+                amount: getCartAmount() + delivery_fee,
+                address: formData
             };
-    
+
             const headers = {
                 'Authorization': `Bearer ${storedToken}`,
                 'Content-Type': 'application/json'
             };
-    
+
             switch (method) {
                 case 'cod':
                     const response = await axios.post(
@@ -117,11 +132,11 @@ const PlaceOrder = () => {
                     );
                     if (response.data.success) {
                         setCartItems({});
-                        navigate('/orders');
                         toast.success('Order placed successfully');
+                        navigate('/orders');
                     }
                     break;
-    
+
                 case 'stripe':
                     const responseStripe = await axios.post(
                         `${backendUrl}/api/order/stripe`,
@@ -132,7 +147,7 @@ const PlaceOrder = () => {
                         window.location.replace(responseStripe.data.session_url);
                     }
                     break;
-    
+
                 case 'razorpay':
                     const responseRazorpay = await axios.post(
                         `${backendUrl}/api/order/razorpay`,

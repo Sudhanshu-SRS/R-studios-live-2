@@ -9,18 +9,20 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendEmail = async (to, subject, text) => {
+export const sendEmail = async ({ to, subject, html }) => {
   const mailOptions = {
-    from: process.env.SENDER_EMAIL,
-    to,
-    subject,
-    text,
+    from: `"R-Studio" <${process.env.SENDER_EMAIL}>`,
+    to: to,
+    subject: subject,
+    html: html
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Email sent to ${to}`);
+    const info = await transporter.sendMail(mailOptions);
+    // console.log(`Email sent successfully to ${to}`);
+    return info;
   } catch (error) {
-    console.error(`Error sending email to ${to}:`, error);
+    // console.error(`Error sending email to ${to}:`, error);
+    throw error;
   }
 };
