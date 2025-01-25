@@ -60,7 +60,7 @@ const Slider = ({ images }) => {
 
   return (
     <div
-      className='relative w-full h-[800px] overflow-hidden group'
+      className='relative w-full  overflow-hidden group'
       {...handlers} // Apply swipe handlers
       onMouseEnter={() => {
         setPaused(true);
