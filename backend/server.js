@@ -16,14 +16,25 @@ const port = process.env.PORT || 4000
 connectDB()
 connectCloudinary()
 
-// middlewares
-app.use(express.json())
+// CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173','http://localhost:5174'],
+  origin: [
+    'http://localhost:5173',           // Frontend development
+    'http://localhost:5174',           // Admin development
+    'https://rashistudio.com',         // Production frontend
+    'https://admin.rashistudio.com',   // Production admin
+    'https://www.rashistudio.com'      // Production frontend with www
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'token'] // Added 'token'
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'token'],
+  exposedHeaders: ['Access-Control-Allow-Origin']
 }));
+
+// Pre-flight requests
+app.options('*', cors());
+
+app.use(express.json());
 app.use(cookieParser());
 
 // api endpoints
