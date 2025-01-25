@@ -4,7 +4,6 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    // phone: { type: Number, required: true, unique: true }, // You can re-enable this if needed
     password: { type: String, required: true },
     verifyotp: { type: String, default: '' },
     verifyotpExpireAt: { type: Number, default: 0 }, // Expiration time for OTP
@@ -15,6 +14,18 @@ const userSchema = new mongoose.Schema(
     // New fields for OTP request tracking
     otpRequestCount: { type: Number, default: 0 }, // Counter for OTP requests per day
     lastOtpRequestAt: { type: Date, default: Date.now }, // Timestamp for the last OTP request
+
+    // Add address fields
+    address: {
+        firstName: { type: String },
+        lastName: { type: String },
+        street: { type: String },
+        city: { type: String },
+        state: { type: String },
+        zipcode: { type: String },
+        country: { type: String },
+        phone: { type: String }
+    },
 
     cartData: { type: Object, default: {} },
   },

@@ -47,23 +47,34 @@ const getUserProfile = async (req, res) => {
 };
 // Update user profile
 const updateUserProfile = async (req, res) => {
-  try {
-    const { userId, name, phone, address } = req.body;
-    const user = await userModel.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    try {
+        const { userId, address } = req.body;
+        
+        const updatedUser = await userModel.findByIdAndUpdate(
+            userId,
+            { address },
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: updatedUser
+        });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-    user.name = name || user.name;
-    user.phone = phone || user.phone;
-    user.address = address || user.address;
-
-    await user.save();
-    res.json({ success: true, message: 'Profile updated successfully', user });
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
 };
 
 // Route for user login

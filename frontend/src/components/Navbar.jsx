@@ -55,6 +55,14 @@ const Navbar = () => {
     setDropdownItemsAnimation(dropdownVisible ? [0, 0, 0] : [1, 2, 3]); // Animate items one by one
   };
 
+  // Fix the navigation links array and home path
+  const navigationLinks = [
+    { name: 'HOME', path: '/' },
+    { name: 'COLLECTION', path: '/collection' },
+    { name: 'ABOUT', path: '/about' },
+    { name: 'CONTACT', path: '/contact' }
+  ];
+
   return (
     <animated.div style={navbarStyles} className="fixed top-0 left-0 w-full z-50 transition-transform">
       <div className="flex items-center justify-between py-4 px-6 font-medium bg-gradient-to-r from-gray-200 to-gray-300">
@@ -70,14 +78,15 @@ const Navbar = () => {
           />
         </Link>
 
+        {/* Desktop Navigation */}
         <ul className="hidden sm:flex gap-10 text-sm font-semibold text-gray-700">
-          {['HOME', 'COLLECTION', 'ABOUT', 'CONTACT'].map((item, index) => (
+          {navigationLinks.map((item, index) => (
             <NavLink
               key={index}
-              to={item === 'HOME' ? '/' : `/${item.toLowerCase()}`}
+              to={item.path}
               className="relative group flex flex-col items-center gap-1 duration-300 ease-in-out transform hover:scale-110"
             >
-              <p>{item}</p>
+              <p>{item.name}</p>
               <span className="w-0 h-[2px] bg-teal-500 transition-all duration-300 group-hover:w-full"></span>
             </NavLink>
           ))}
@@ -93,7 +102,10 @@ const Navbar = () => {
 
           <div className="relative group">
             <img
-              onClick={toggleDropdown} // Toggle dropdown on click
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event bubbling
+                toggleDropdown();
+              }}
               src={assets.profile_icon}
               className="w-6 cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-110"
               alt="Profile"
@@ -141,14 +153,17 @@ const Navbar = () => {
               <img className="h-4 rotate-180" src={assets.dropdown_icon} alt="Back" />
               <p>Back</p>
             </div>
-            {['HOME', 'COLLECTION', 'ABOUT', 'CONTACT'].map((item, index) => (
+            {navigationLinks.map((item, index) => (
               <NavLink
                 key={index}
-                onClick={() => setVisible(false)}
+                onClick={() => {
+                  setVisible(false);
+                  setDropdownVisible(false); // Close dropdown when navigating
+                }}
                 className="py-3 pl-6 border-b border-gray-300 hover:text-teal-500 transition-all"
-                to={`/${item.toLowerCase()}`}
+                to={item.path}
               >
-                {item}
+                {item.name}
               </NavLink>
             ))}
           </div>

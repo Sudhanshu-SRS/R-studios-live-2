@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import Title from '../components/Title'
 import CartTotal from '../components/CartTotal'
 import { assets } from '../assets/assets'
@@ -7,8 +7,8 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 
 const PlaceOrder = () => {
-
     const [method, setMethod] = useState('cod');
+    const [useSavedAddress, setUseSavedAddress] = useState(true);
     const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, userData } = useContext(ShopContext);
     const [formData, setFormData] = useState({
         firstName: '',
@@ -20,7 +20,37 @@ const PlaceOrder = () => {
         zipcode: '',
         country: '',
         phone: ''
-    })
+    });
+
+    // Load saved address when component mounts or when useSavedAddress changes
+    useEffect(() => {
+        if (userData?.address && useSavedAddress) {
+            setFormData({
+                firstName: userData.address.firstName || '',
+                lastName: userData.address.lastName || '',
+                email: userData.email || '',
+                street: userData.address.street || '',
+                city: userData.address.city || '',
+                state: userData.address.state || '',
+                zipcode: userData.address.zipcode || '',
+                country: userData.address.country || '',
+                phone: userData.address.phone || ''
+            });
+        } else if (!useSavedAddress) {
+            // Clear form if user chooses to add new address
+            setFormData({
+                firstName: '',
+                lastName: '',
+                email: '',
+                street: '',
+                city: '',
+                state: '',
+                zipcode: '',
+                country: '',
+                phone: ''
+            });
+        }
+    }, [userData, useSavedAddress]);
 
     const onChangeHandler = (event) => {
         const name = event.target.name
@@ -181,21 +211,75 @@ const PlaceOrder = () => {
                 <div className='text-xl sm:text-2xl my-3'>
                     <Title text1={'DELIVERY'} text2={'INFORMATION'} />
                 </div>
-                <div className='flex gap-3'>
-                    <input required onChange={onChangeHandler} name='firstName' value={formData.firstName} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='First name' />
-                    <input required onChange={onChangeHandler} name='lastName' value={formData.lastName} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Last name' />
-                </div>
-                <input required onChange={onChangeHandler} name='email' value={formData.email} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="email" placeholder='Email address' />
-                <input required onChange={onChangeHandler} name='street' value={formData.street} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Street' />
-                <div className='flex gap-3'>
-                    <input required onChange={onChangeHandler} name='city' value={formData.city} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='City' />
-                    <input onChange={onChangeHandler} name='state' value={formData.state} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='State' />
-                </div>
-                <div className='flex gap-3'>
-                    <input required onChange={onChangeHandler} name='zipcode' value={formData.zipcode} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="number" placeholder='Zipcode' />
-                    <input required onChange={onChangeHandler} name='country' value={formData.country} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Country' />
-                </div>
-                <input required onChange={onChangeHandler} name='phone' value={formData.phone} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="number" placeholder='Phone' />
+
+                {/* Address Selection */}
+                {userData?.address && (
+                    <div className="mb-4 p-4 border rounded-md">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold">Delivery Address</h3>
+                            <div className="flex gap-2">
+                                {useSavedAddress ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setUseSavedAddress(false)}
+                                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm transition-colors"
+                                    >
+                                        Add New Address
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setUseSavedAddress(true)}
+                                        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm transition-colors"
+                                    >
+                                        Use Saved Address
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {useSavedAddress && (
+                            <div className="text-sm text-gray-600 border-l-4 border-blue-500 pl-4">
+                                <p className="font-medium">{userData.address.firstName} {userData.address.lastName}</p>
+                                <p>{userData.address.street}</p>
+                                <p>{userData.address.city}, {userData.address.state}</p>
+                                <p>{userData.address.zipcode}, {userData.address.country}</p>
+                                <p>Phone: {userData.address.phone}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Address Form - Show if no saved address or adding new address */}
+                {(!userData?.address || !useSavedAddress) && (
+                    <div className="space-y-4">
+                        <h3 className="font-semibold">Enter New Address</h3>
+                        <div className='flex gap-3'>
+                            <input 
+                                required 
+                                onChange={onChangeHandler} 
+                                name='firstName' 
+                                value={formData.firstName} 
+                                className='border border-gray-300 rounded py-1.5 px-3.5 w-full' 
+                                type="text" 
+                                placeholder='First name'
+                                disabled={useSavedAddress}
+                            />
+                            <input required onChange={onChangeHandler} name='lastName' value={formData.lastName} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Last name' />
+                        </div>
+                        <input required onChange={onChangeHandler} name='email' value={formData.email} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="email" placeholder='Email address' />
+                        <input required onChange={onChangeHandler} name='street' value={formData.street} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Street' />
+                        <div className='flex gap-3'>
+                            <input required onChange={onChangeHandler} name='city' value={formData.city} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='City' />
+                            <input onChange={onChangeHandler} name='state' value={formData.state} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='State' />
+                        </div>
+                        <div className='flex gap-3'>
+                            <input required onChange={onChangeHandler} name='zipcode' value={formData.zipcode} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="number" placeholder='Zipcode' />
+                            <input required onChange={onChangeHandler} name='country' value={formData.country} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="text" placeholder='Country' />
+                        </div>
+                        <input required onChange={onChangeHandler} name='phone' value={formData.phone} className='border border-gray-300 rounded py-1.5 px-3.5 w-full' type="number" placeholder='Phone' />
+                    </div>
+                )}
             </div>
 
             {/* ------------- Right Side ------------------ */}

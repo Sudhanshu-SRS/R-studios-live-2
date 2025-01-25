@@ -1,43 +1,72 @@
-import React, { useState, useContext, useEffect , useRef} from "react";
-import Draggable from "react-draggable";
-import axios from "axios";
-import { toast } from "react-toastify";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { motion } from "framer-motion";
 
-const PopupVerify = ({ onClose }) => {
-  const { backendUrl, userData, token, isAccountVerified } = useContext(ShopContext);
-  const [isDragging, setIsDragging] = useState(false);
-  const [loading, setLoading] = useState(false); // Button loading state
-  const [isVisible, setIsVisible] = useState(false); // Controls popup visibility
+const EmailVerify = () => {
+  const { 
+    backendUrl, 
+    isLoggedIn, 
+    userData, 
+    getUserData,
+    token 
+  } = useContext(ShopContext);
+  const inputRefs = useRef([]);
   const navigate = useNavigate();
-  const timerRef = useRef(null); // Timer reference to clear timeout on component unmount
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
+  const [isExpired, setIsExpired] = useState(false);
 
-  useEffect(() => {
-    // Check if user is not verified and show the popup
-    if (userData && !isAccountVerified) {
-      setIsVisible(true);
+  const handleInput = (e, index) => {
+    if (e.target.value.length > 0 && index < inputRefs.current.length - 1) {
+      inputRefs.current[index + 1].focus();
     }
-  }, [userData, isAccountVerified]);
+  };
 
-  const sendVerificationOTPHandler = async () => {
-    setLoading(true);
+  const handleKeyDown = (e, index) => {
+    if (e.key === "Backspace" && e.target.value === "" && index > 0) {
+      inputRefs.current[index - 1].focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    const paste = e.clipboardData.getData("text");
+    paste.split("").forEach((char, index) => {
+      if (inputRefs.current[index]) {
+        inputRefs.current[index].value = char;
+        if (index < inputRefs.current.length - 1) {
+          inputRefs.current[index + 1].focus();
+        }
+      }
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
+      const otpArray = inputRefs.current.map((ref) => ref.value);
+      const otp = otpArray.join("");
+
       const response = await axios.post(
-        `${backendUrl}/api/user/send-verify-otp`,
-        { userId: userData?._id },
+        `${backendUrl}/api/user/verify-email`, 
+        { 
+          userId: userData?._id, 
+          otp 
+        },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           },
-          withCredentials: true,
+          withCredentials: true
         }
       );
 
       if (response.data.success) {
-        toast.success("Verification OTP sent successfully");
-        navigate("/emailverify");
+        toast.success(response.data.message);
+        await getUserData(); // Refresh user data
+        navigate("/");
       } else {
         toast.error(response.data.message);
       }
@@ -45,108 +74,147 @@ const PopupVerify = ({ onClose }) => {
       console.error("Verification error:", error);
       if (error?.response?.status === 401) {
         toast.error("Session expired. Please login again");
-        navigate("/login");
+        navigate('/login');
       } else {
-        toast.error("Failed to send verification OTP");
+        toast.error(error?.response?.data?.message || "Failed to verify email. Please try again.");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setIsVisible(false); // Hide the popup
-    if (onClose) onClose();
-
-    // Set a timer to show the popup again after 3 minutes
-    clearTimeout(timerRef.current); // Clear any previous timer
-    timerRef.current = setTimeout(() => {
-      if (userData && !isAccountVerified) {
-        setIsVisible(true); // Show the popup again if the user is still unverified
-      }
-    }, 180000); // 3 minutes
-  };
+  useEffect(() => {
+    if (isLoggedIn && userData?.isAccountVerified) {
+      navigate("/");
+    }
+  }, [isLoggedIn, userData, navigate]);
 
   useEffect(() => {
-    return () => {
-      clearTimeout(timerRef.current); // Cleanup timeout on component unmount
-    };
-  }, []);
+    if (timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setIsExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
-  if (!isVisible || isAccountVerified) {
-    return null; // Don't render if popup is hidden or user is verified
-  }
+      return () => clearInterval(timer);
+    }
+  }, [timeLeft]);
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <Draggable
-      handle=".handle"
-      onStart={() => setIsDragging(true)}
-      onStop={() => setIsDragging(false)}
+    <motion.div 
+      className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 to-blue-100 px-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
     >
-      <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-        <div className="relative bg-white rounded-xl shadow-lg w-full max-w-lg">
-          {/* Header */}
-          <div className="handle flex justify-between items-center bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-4 rounded-t-xl">
-            <h3 className="text-lg font-semibold">Email Verification</h3>
-            <button
-              onClick={handleClose}
-              className="text-white hover:bg-white/10 rounded-full p-1"
-            >
-              ✕
-            </button>
-          </div>
+      <motion.div 
+        className="bg-white shadow-2xl rounded-lg p-8 w-full max-w-lg" 
+        initial={{ scale: 0.9 }} 
+        animate={{ scale: 1 }} 
+        transition={{ duration: 0.4 }}
+      >
+        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Verify Your Email</h1>
 
-          {/* Content */}
-          <div className="p-6 space-y-6">
-            <div className="flex items-center gap-3 text-indigo-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <span className="text-lg font-medium">
-                Hello, {userData?.name || "User"}!
-              </span>
-            </div>
-            <p className="text-gray-700 text-sm">
-              Verify your email address (
-              <span className="font-medium text-gray-800">
-                {userData?.email || "your registered email"}
-              </span>
-              ) to unlock full features:
-            </p>
-
-            <ul className="list-disc list-inside space-y-1 text-gray-600 text-sm">
-              <li>Enable account recovery options</li>
-              <li>Access exclusive features</li>
-              <li>Enhance your account's security</li>
-            </ul>
-
-            <button
-              onClick={sendVerificationOTPHandler}
-              className={`w-full py-3 text-white rounded-md ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-700 transition"
-              }`}
-              disabled={loading}
-            >
-              {loading ? "Sending..." : "Send Verification Email"}
-            </button>
-          </div>
+        <div className="text-center mb-4">
+          <p className={`text-sm ${isExpired ? 'text-red-500' : 'text-gray-500'}`}>
+            {isExpired ? 
+              'OTP has expired. Please request a new one.' : 
+              `Time remaining: ${formatTime(timeLeft)}`
+            }
+          </p>
         </div>
-      </div>
-    </Draggable>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-center gap-2" onPaste={handlePaste}>
+            {Array(6)
+              .fill(0)
+              .map((_, index) => (
+                <motion.input
+                  key={index}
+                  type="text"
+                  maxLength={1}
+                  required
+                  disabled={isExpired}
+                  className={`w-12 h-12 border ${isExpired ? 'bg-gray-100 border-gray-300' : 'border-gray-300'} text-center text-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  ref={(el) => (inputRefs.current[index] = el)}
+                  onInput={(e) => handleInput(e, index)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: index * 0.1 }}
+                />
+              ))}
+          </div>
+          <motion.button
+            type="submit"
+            disabled={isExpired}
+            className={`w-full py-3 ${isExpired ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium rounded-lg transition-colors shadow-lg`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Verify Email
+          </motion.button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Didn't receive a code?{" "}
+          <motion.button
+            className={`${!isExpired ? 'text-gray-400 cursor-not-allowed' : 'text-green-600'} hover:underline`}
+            onClick={async () => {
+                try {
+                    if (!isExpired) {
+                        toast.warning(`Please wait ${formatTime(timeLeft)} before requesting new OTP`);
+                        return;
+                    }
+
+                    const response = await axios.post(
+                        `${backendUrl}/api/user/send-verify-otp`,
+                        { userId: userData?._id },
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            withCredentials: true
+                        }
+                    );
+
+                    if (response.data.success) {
+                        setTimeLeft(15 * 60); // Reset timer to 15 minutes
+                        setIsExpired(false);
+                        toast.success('New OTP sent successfully');
+                    } else {
+                        toast.error(response.data.message || 'Failed to send OTP');
+                    }
+                } catch (error) {
+                    console.error('Resend OTP error:', error);
+                    if (error?.response?.status === 401) {
+                        toast.error('Session expired. Please login again');
+                        navigate('/login');
+                    } else {
+                        toast.error(error?.response?.data?.message || 'Failed to resend OTP');
+                    }
+                }
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Resend Code
+          </motion.button>
+        </p>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export default PopupVerify;
+export default EmailVerify;
