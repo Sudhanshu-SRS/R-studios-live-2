@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiUpload, HiTrash, HiPhotograph } from 'react-icons/hi';
+import { toast } from 'react-toastify';
 
 const AdminUpload = () => {
-  const [image, setImage] = useState(null);
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [selectedImageId, setSelectedImageId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+  const [images, setImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchImages();
@@ -76,44 +80,135 @@ const AdminUpload = () => {
     setSelectedImageId(imageId);
   };
 
-  return (
-    <div>
-      <h2 className='text-lg font-semibold my-4'>Upload Image</h2>
-      <input type="file" onChange={handleImageChange} />
-      <button className='bg-red-500 hover:bg-gray-800 text-white px-5 py-2 sm:px-7 sm:py-2 rounded-full text-xs sm:text-sm flex my-5' onClick={handleUpload} disabled={loading}>
-        {loading ? 'Uploading...' : 'Upload'}
-      </button>
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.5,
+        staggerChildren: 0.1
+      }
+    }
+  };
 
-      <h2 className='text-lg font-semibold my-4'>Manage Images</h2>
-      <ul className='flex flex-wrap'>
-        {Array.isArray(images) && images.length > 0 ? (
-          images.map((image) => (
-            <li
-              key={image._id}
-              className={`m-2 p-1 border ${selectedImageId === image._id ? 'border-blue-500' : 'border-transparent'}`}
-              onClick={() => handleSelectImage(image._id)}
-              style={{ cursor: 'pointer', width: '100px', height: '100px' }}
-            >
-              <img
-                src={image.url}
-                alt="Uploaded"
-                className={`w-full h-full object-cover ${selectedImageId === image._id ? 'transform scale-110' : ''}`}
-              />
-            </li>
-          ))
-        ) : (
-          <li>No images available</li>
-        )}
-      </ul>
-      {selectedImageId && (
-        <button
-          className='bg-red-500 hover:bg-gray-800 text-white px-5 py-2 sm:px-7 sm:py-2 rounded-full text-xs sm:text-sm flex my-5'
-          onClick={() => handleDelete(selectedImageId)}
-        >
-          Delete Selected Image
-        </button>
-      )}
-    </div>
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { 
+      opacity: 1, 
+      scale: 1,
+      transition: { duration: 0.3 }
+    }
+  };
+
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
+      {/* Upload Area */}
+      <motion.div
+        className={`
+          relative border-2 border-dashed rounded-xl p-8
+          ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
+          transition-colors duration-300
+        `}
+        onDragEnter={() => setIsDragging(true)}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          // Handle file drop
+        }}
+        onDragOver={(e) => e.preventDefault()}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          multiple
+          onChange={(e) => {/* Handle file selection */}}
+        />
+        
+        <div className="flex flex-col items-center gap-4">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-blue-100 rounded-full"
+          >
+            <HiUpload className="w-8 h-8 text-blue-500" />
+          </motion.div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-700">
+              Drag and drop your images here
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              or click to browse from your computer
+            </p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => fileInputRef.current?.click()}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Choose Files
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Image Grid */}
+      <motion.div variants={containerVariants} className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+          <HiPhotograph className="text-blue-500" />
+          Uploaded Images
+        </h3>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <AnimatePresence>
+            {images.length > 0 ? (
+              images.map((image) => (
+                <motion.div
+                  key={image._id}
+                  variants={itemVariants}
+                  layoutId={`image-${image._id}`}
+                  className={`
+                    relative group aspect-square rounded-lg overflow-hidden shadow-md
+                    ${selectedImageId === image._id ? 'ring-2 ring-blue-500' : ''}
+                  `}
+                  onClick={() => setSelectedImageId(image._id)}
+                >
+                  <motion.img
+                    src={image.url}
+                    alt="Carousel"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(image._id);
+                    }}
+                  >
+                    <HiTrash className="w-4 h-4" />
+                  </motion.button>
+                </motion.div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                No images uploaded yet
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

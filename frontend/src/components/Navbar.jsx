@@ -1,8 +1,9 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { assets } from '../assets/assets';
 import { Link, NavLink } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { useSpring, animated } from 'react-spring';
+import { motion } from 'framer-motion';
 
 const Navbar = () => {
   const [visible, setVisible] = useState(false);
@@ -11,6 +12,8 @@ const Navbar = () => {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [dropdownVisible, setDropdownVisible] = useState(false); // For handling dropdown visibility
   const [dropdownItemsAnimation, setDropdownItemsAnimation] = useState([0, 0, 0]); // For animating each dropdown item
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const { setShowSearch, getCartCount, navigate, token, setToken, setCartItems } = useContext(ShopContext);
   
@@ -32,6 +35,24 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    // Add event listener when dropdown is open
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
   const navbarStyles = useSpring({
     transform: scrollDirection === 'up' ? 'translateY(0%)' : 'translateY(-100%)',
     backgroundColor: scrolled ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
@@ -51,8 +72,13 @@ const Navbar = () => {
 
   // Handle dropdown hover or click
   const toggleDropdown = () => {
-    setDropdownVisible(!dropdownVisible);
-    setDropdownItemsAnimation(dropdownVisible ? [0, 0, 0] : [1, 2, 3]); // Animate items one by one
+    setDropdownOpen(!dropdownOpen);
+    // If opening dropdown, animate items sequentially
+    if (!dropdownOpen) {
+      setDropdownItemsAnimation([1, 1, 1]);
+    } else {
+      setDropdownItemsAnimation([0, 0, 0]);
+    }
   };
 
   // Fix the navigation links array and home path
@@ -62,6 +88,8 @@ const Navbar = () => {
     { name: 'ABOUT', path: '/about' },
     { name: 'CONTACT', path: '/contact' }
   ];
+
+  const isLoggedIn = !!token;
 
   return (
     <animated.div style={navbarStyles} className="fixed top-0 left-0 w-full z-50 transition-transform">
@@ -100,33 +128,88 @@ const Navbar = () => {
             alt="Search"
           />
 
-          <div className="relative group">
-            <img
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent event bubbling
-                toggleDropdown();
-              }}
-              src={assets.profile_icon}
-              className="w-6 cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-110"
-              alt="Profile"
-            />
+          <div ref={dropdownRef} className="relative">
+            {isLoggedIn ? (
+              <div>
+                {/* Existing logged-in user dropdown */}
+                <div className="cursor-pointer" onClick={toggleDropdown}>
+                  <motion.div whileHover={{ scale: 1.05 }} className="flex items-center gap-2">
+                    <img src={assets.profile_icon} className="w-6" alt="Profile" />
+                    <img
+                      className={`h-4 transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`}
+                      src={assets.dropdown_icon}
+                      alt="Dropdown"
+                    />
+                  </motion.div>
+                </div>
 
-            {dropdownVisible && (
-              <div className="absolute right-0 pt-4 z-10 w-48 py-3 px-5 bg-white text-gray-800 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300">
-                {['My Profile', 'Orders', 'Logout'].map((text, index) => (
-                  <animated.p
-                    key={index}
-                    onClick={text === 'Logout' ? logout : () => navigate(`/${text.toLowerCase().replace(" ", "")}`)}
-                    className="cursor-pointer hover:text-teal-500 flex items-center gap-2"
-                    style={{
-                      opacity: dropdownItemsAnimation[index] === 0 ? 0 : 1,
-                      transform: dropdownItemsAnimation[index] === 0 ? 'translateY(-20px)' : 'translateY(0px)',
-                      transition: `opacity 0.3s, transform 0.3s ${index * 0.3}s`, // Sequential animation
-                    }}
+                {/* Logged-in user dropdown menu */}
+                {dropdownOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 px-3 space-y-2 z-50"
                   >
-                    {text === 'My Profile' && '👤'} {text === 'Orders' && '🛒'} {text === 'Logout' && '🚪'} {text}
-                  </animated.p>
-                ))}
+                    {['My Profile', 'Orders', 'Logout'].map((text, index) => (
+                      <motion.p
+                        key={index}
+                        onClick={text === 'Logout' ? logout : () => navigate(`/${text.toLowerCase().replace(" ", "")}`)}
+                        className="cursor-pointer hover:text-teal-500 flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        {text === 'My Profile' && '👤'} 
+                        {text === 'Orders' && '🛒'} 
+                        {text === 'Logout' && '🚪'} 
+                        {text}
+                      </motion.p>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <div>
+                {/* Not logged in dropdown */}
+                <div className="cursor-pointer" onClick={toggleDropdown}>
+                  <motion.div whileHover={{ scale: 1.05 }} className="flex items-center gap-2">
+                    <img src={assets.profile_icon} className="w-6" alt="Profile" />
+                    <img
+                      className={`h-4 transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`}
+                      src={assets.dropdown_icon}
+                      alt="Dropdown"
+                    />
+                  </motion.div>
+                </div>
+
+                {/* Not logged in dropdown menu */}
+                {dropdownOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 px-3 space-y-2 z-50"
+                  >
+                    <motion.p
+                      onClick={() => navigate('/login')}
+                      className="cursor-pointer hover:text-teal-500 flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                    >
+                      🔐 Login
+                    </motion.p>
+                    <motion.p
+                      onClick={() => navigate('/resetpassword')}
+                      className="cursor-pointer hover:text-teal-500 flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      🔄 Forgot Password
+                    </motion.p>
+                  </motion.div>
+                )}
               </div>
             )}
           </div>
@@ -166,6 +249,30 @@ const Navbar = () => {
                 {item.name}
               </NavLink>
             ))}
+            {!isLoggedIn && (
+              <>
+                <div
+                  onClick={() => {
+                    navigate('/login');
+                    setVisible(false);
+                  }}
+                  className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-100"
+                >
+                  <span>🔐</span>
+                  <p>Login</p>
+                </div>
+                <div
+                  onClick={() => {
+                    navigate('/resetpassword');
+                    setVisible(false);
+                  }}
+                  className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-100"
+                >
+                  <span>🔄</span>
+                  <p>Forgot Password</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

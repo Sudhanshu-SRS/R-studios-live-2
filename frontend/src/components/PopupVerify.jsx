@@ -1,220 +1,88 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { ShopContext } from "../context/ShopContext";
-import { toast } from "react-toastify";
+import React, { useContext } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { HiOutlineMailOpen, HiOutlineExclamationCircle } from "react-icons/hi";
+import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
-import { motion } from "framer-motion";
+import { toast } from "react-toastify";
 
-const EmailVerify = () => {
-  const { 
-    backendUrl, 
-    isLoggedIn, 
-    userData, 
-    getUserData,
-    token 
-  } = useContext(ShopContext);
-  const inputRefs = useRef([]);
+const PopupVerify = ({ onClose }) => {
   const navigate = useNavigate();
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
-  const [isExpired, setIsExpired] = useState(false);
+  const { backendUrl, userData, token, setShowVerifyPopup } = useContext(ShopContext);
 
-  const handleInput = (e, index) => {
-    if (e.target.value.length > 0 && index < inputRefs.current.length - 1) {
-      inputRefs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyDown = (e, index) => {
-    if (e.key === "Backspace" && e.target.value === "" && index > 0) {
-      inputRefs.current[index - 1].focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    const paste = e.clipboardData.getData("text");
-    paste.split("").forEach((char, index) => {
-      if (inputRefs.current[index]) {
-        inputRefs.current[index].value = char;
-        if (index < inputRefs.current.length - 1) {
-          inputRefs.current[index + 1].focus();
-        }
-      }
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const otpArray = inputRefs.current.map((ref) => ref.value);
-      const otp = otpArray.join("");
-
-      const response = await axios.post(
-        `${backendUrl}/api/user/verify-email`, 
-        { 
-          userId: userData?._id, 
-          otp 
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true
-        }
-      );
-
-      if (response.data.success) {
-        toast.success(response.data.message);
-        await getUserData(); // Refresh user data
-        navigate("/");
-      } else {
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
-      if (error?.response?.status === 401) {
-        toast.error("Session expired. Please login again");
-        navigate('/login');
-      } else {
-        toast.error(error?.response?.data?.message || "Failed to verify email. Please try again.");
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (isLoggedIn && userData?.isAccountVerified) {
-      navigate("/");
-    }
-  }, [isLoggedIn, userData, navigate]);
-
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setIsExpired(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }
-  }, [timeLeft]);
-
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  const handleVerifyClick = () => {
+    setShowVerifyPopup(false);
+    onClose();
+    navigate('/emailverify');
   };
 
   return (
-    <motion.div 
-      className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 to-blue-100 px-6"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <motion.div 
-        className="bg-white shadow-2xl rounded-lg p-8 w-full max-w-lg" 
-        initial={{ scale: 0.9 }} 
-        animate={{ scale: 1 }} 
-        transition={{ duration: 0.4 }}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
-        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Verify Your Email</h1>
+        <motion.div
+          className="bg-white rounded-xl p-8 w-full max-w-md relative"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
 
-        <div className="text-center mb-4">
-          <p className={`text-sm ${isExpired ? 'text-red-500' : 'text-gray-500'}`}>
-            {isExpired ? 
-              'OTP has expired. Please request a new one.' : 
-              `Time remaining: ${formatTime(timeLeft)}`
-            }
-          </p>
-        </div>
+          <div className="text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4"
+            >
+              <HiOutlineExclamationCircle className="w-8 h-8 text-yellow-600" />
+            </motion.div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex justify-center gap-2" onPaste={handlePaste}>
-            {Array(6)
-              .fill(0)
-              .map((_, index) => (
-                <motion.input
-                  key={index}
-                  type="text"
-                  maxLength={1}
-                  required
-                  disabled={isExpired}
-                  className={`w-12 h-12 border ${isExpired ? 'bg-gray-100 border-gray-300' : 'border-gray-300'} text-center text-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  onInput={(e) => handleInput(e, index)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2, delay: index * 0.1 }}
-                />
-              ))}
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Email Not Verified
+            </h2>
+            
+            <p className="text-gray-600 mb-6">
+              Your email address hasn't been verified yet. Please verify your email to access all features.
+            </p>
+
+            <div className="space-y-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleVerifyClick}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+              >
+                <HiOutlineMailOpen className="w-5 h-5" />
+                Click to Verify
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onClose}
+                className="w-full px-4 py-3 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Remind Me Later
+              </motion.button>
+            </div>
+
+            <p className="mt-4 text-sm text-gray-500">
+              You'll be reminded again in 3 minutes
+            </p>
           </div>
-          <motion.button
-            type="submit"
-            disabled={isExpired}
-            className={`w-full py-3 ${isExpired ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium rounded-lg transition-colors shadow-lg`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Verify Email
-          </motion.button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Didn't receive a code?{" "}
-          <motion.button
-            className={`${!isExpired ? 'text-gray-400 cursor-not-allowed' : 'text-green-600'} hover:underline`}
-            onClick={async () => {
-                try {
-                    if (!isExpired) {
-                        toast.warning(`Please wait ${formatTime(timeLeft)} before requesting new OTP`);
-                        return;
-                    }
-
-                    const response = await axios.post(
-                        `${backendUrl}/api/user/send-verify-otp`,
-                        { userId: userData?._id },
-                        {
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            withCredentials: true
-                        }
-                    );
-
-                    if (response.data.success) {
-                        setTimeLeft(15 * 60); // Reset timer to 15 minutes
-                        setIsExpired(false);
-                        toast.success('New OTP sent successfully');
-                    } else {
-                        toast.error(response.data.message || 'Failed to send OTP');
-                    }
-                } catch (error) {
-                    console.error('Resend OTP error:', error);
-                    if (error?.response?.status === 401) {
-                        toast.error('Session expired. Please login again');
-                        navigate('/login');
-                    } else {
-                        toast.error(error?.response?.data?.message || 'Failed to resend OTP');
-                    }
-                }
-            }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Resend Code
-          </motion.button>
-        </p>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </AnimatePresence>
   );
 };
 
-export default EmailVerify;
+export default PopupVerify;

@@ -310,10 +310,10 @@ const verifyEmail = async (req, res) => {
       });
     }
 
-    console.log('Stored OTP:', user.verifyotp);
-    console.log('Received OTP:', otp);
-    console.log('OTP Expiry (Stored):', user.verifyotpExpireAt);
-    console.log('Current Time (Milliseconds):', Date.now());
+    // console.log('Stored OTP:', user.verifyotp);
+    // console.log('Received OTP:', otp);
+    // console.log('OTP Expiry (Stored):', user.verifyotpExpireAt);
+    // console.log('Current Time (Milliseconds):', Date.now());
     
     // Ensure the expiration comparison is done correctly
     if (String(user.verifyotp) !== String(otp)) {
@@ -337,7 +337,7 @@ const verifyEmail = async (req, res) => {
     user.verifyotpExpireAt = 0;
     await user.save();
 
-    console.log('User verification status updated:', user.isAccountVerified);
+    // console.log('User verification status updated:', user.isAccountVerified);
 
     return res.status(200).json({ 
       success: true, 
@@ -450,11 +450,76 @@ const adminLogin = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+const googleAuth = async (req, res) => {
+  try {
+      const { email, name, googleId } = req.body;
+
+      // Check if user exists
+      let user = await userModel.findOne({ email });
+      let isNewUser = false;
+      if (!user) {
+          // Create new user if doesn't exist
+          user = new userModel({
+              name,
+              email,
+              password: googleId, // You might want to handle this differently
+              isAccountVerified: true // Google accounts are already verified
+          });
+          await user.save();
+          isNewUser = true;
+           // Send welcome email
+           const mailOptions = {
+            from: process.env.SENDER_EMAIL,
+            to: email,
+            subject: "WELCOME TO R-Studio",
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+                    <h2>Welcome to R-Studio!</h2>
+                    <p>Hello ${name},</p>
+                    <p>Thank you for joining R-Studio using Google Sign-In. We're excited to have you with us!</p>
+                    <p>Your account has been successfully created with:</p>
+                    <ul>
+                        <li>Email: ${email}</li>
+                        <li>Name: ${name}</li>
+                    </ul>
+                    <p>Start exploring our collection now!</p>
+                    <p>Best regards,<br/>The R-Studio Team</p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+      }
+
+      // Create JWT token
+      const token = createToken(user._id);
+
+      res.cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      res.json({
+          success: true,
+          token,
+          message: "Google authentication successful"
+      });
+  } catch (error) {
+      console.error('Google auth error:', error);
+      res.status(500).json({
+          success: false,
+          message: error.message
+      });
+  }
+};
 
 export {
   loginUser,
   registerUser,
   adminLogin,
+  googleAuth,
   logout,
   sendverifyOtp,
   verifyEmail,
@@ -462,5 +527,6 @@ export {
   sendResetOtp,
   resetPassword,
   getUserProfile,
-  updateUserProfile, // Add this line
+  updateUserProfile,
+  
 };

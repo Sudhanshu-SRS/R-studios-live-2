@@ -20,13 +20,17 @@ import EmailVerify from './pages/EmailVerify'
 import Profile from './pages/Profile';
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Returns from './pages/Return';
-
+import ShippingPolicy from './pages/ShippingPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
+import PageRefresh from './components/PageRefresh'
 const App = () => {
   return (
     <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+      
       <ToastContainer />
       <Navbar />
       <SearchBar />
+      <PageRefresh />
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/collection' element={<Collection />} />
@@ -43,6 +47,8 @@ const App = () => {
         <Route path="/myprofile" element={<Profile />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/return" element={<Returns />} />
+        <Route path="/shipping-policy" element={<ShippingPolicy />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
       </Routes>
       <Footer />
     </div>

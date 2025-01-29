@@ -2,7 +2,7 @@ import { createContext, useEffect, useState,useRef, useContext } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
+import PopupVerify  from "../components/PopupVerify";
 export const ShopContext = createContext();
 
 const ShopContextProvider = (props) => {
@@ -125,12 +125,18 @@ const ShopContextProvider = (props) => {
     const getCartAmount = () => {
         return Object.entries(cartItems).reduce((total, [itemId, sizes]) => {
             const product = products.find((p) => p._id === itemId);
-            return (
-                total +
-                Object.entries(sizes).reduce(
-                    (subtotal, [size, count]) => subtotal + (product?.price || 0) * count,
-                    0
-                )
+            if (!product) return total;
+            
+            // Calculate price with discount
+            const effectivePrice = product.discount 
+                ? (product.discount.discountType === 'percentage'
+                    ? product.price * (1 - product.discount.discountValue / 100)
+                    : product.price - product.discount.discountValue)
+                : product.price;
+
+            return total + Object.entries(sizes).reduce(
+                (subtotal, [size, count]) => subtotal + effectivePrice * count,
+                0
             );
         }, 0);
     };
@@ -139,14 +145,21 @@ const ShopContextProvider = (props) => {
     const getProductsData = async () => {
         try {
             const response = await axios.get(`${backendUrl}/api/product/list`);
+            
             if (response.data.success) {
-                setProducts(response.data.products.reverse());
-            } else {
-                toast.error(response.data.message);
+                const productsWithDiscounts = response.data.products.map(product => ({
+                    ...product,
+                    price: product.effectivePrice || product.price,
+                    originalPrice: product.price,
+                    discount: product.discount
+                }));
+
+                // console.log('Products with discounts:', productsWithDiscounts);
+                setProducts(productsWithDiscounts.reverse());
             }
         } catch (error) {
-            console.error(error);
-            toast.error(error.message);
+            console.error('Error fetching products:', error);
+            toast.error('Failed to load products');
         }
     };
 
@@ -231,14 +244,19 @@ const ShopContextProvider = (props) => {
     // Lifecycle: Trigger verification popup if account is not verified
     useEffect(() => {
         let popupTimer;
-        if (userData && !userData.isAccountVerified && !showVerifyPopup) {
-            popupTimer = setTimeout(() => {
-                setShowVerifyPopup(true);
-            }, 3 * 60 * 1000); // 3 minutes
+        const verificationInProgress = localStorage.getItem('verificationInProgress');
+        
+        if (userData && 
+            !userData.isAccountVerified && 
+            !showVerifyPopup && 
+            !verificationInProgress) {
+          popupTimer = setTimeout(() => {
+            setShowVerifyPopup(true);
+          }, 3 * 60 * 1000); // 3 minutes
         }
+        
         return () => clearTimeout(popupTimer);
-    }, [userData, showVerifyPopup]);
-
+      }, [userData, showVerifyPopup]);
     const value = {
         products,
         currency,
@@ -265,7 +283,14 @@ const ShopContextProvider = (props) => {
         setShowVerifyPopup,handleVerifyPopup
     };
 
-    return <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>;
+    return (
+        <ShopContext.Provider value={value}>
+            {props.children}
+            {showVerifyPopup && (
+                <PopupVerify onClose={() => setShowVerifyPopup(false)} />
+            )}
+        </ShopContext.Provider>
+    );
 };
 
 export default ShopContextProvider;

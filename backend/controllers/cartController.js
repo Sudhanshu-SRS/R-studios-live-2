@@ -32,6 +32,58 @@ const addToCart = async (req,res) => {
     }
 }
 
+const addToCartClient = async (itemId, size) => {
+    if (!token) {
+        toast.error("Please login to add items to cart");
+        navigate("/login");
+        return;
+    }
+
+    try {
+        const response = await axios.post(
+            `${backendUrl}/api/cart/add`,
+            { itemId, size },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                withCredentials: true,
+            }
+        );
+
+        if (response.data.success) {
+            // Update cart items
+            const cartData = structuredClone(cartItems);
+            cartData[itemId] = cartData[itemId] || {};
+            cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
+            setCartItems(cartData);
+
+            // Update product stock in products state
+            setProducts(prevProducts => 
+                prevProducts.map(product => {
+                    if (product._id === itemId) {
+                        return {
+                            ...product,
+                            sizes: product.sizes.map(sizeData => ({
+                                ...sizeData,
+                                quantity: sizeData.size === size ? 
+                                    Math.max(0, sizeData.quantity - 1) : 
+                                    sizeData.quantity
+                            }))
+                        };
+                    }
+                    return product;
+                })
+            );
+
+            toast.success("Item added to cart successfully");
+        }
+    } catch (error) {
+        // Error handling...
+    }
+};
+
 // update user cart
 const updateCart = async (req,res) => {
     try {

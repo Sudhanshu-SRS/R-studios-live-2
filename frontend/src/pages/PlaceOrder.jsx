@@ -5,6 +5,7 @@ import { assets } from '../assets/assets'
 import { ShopContext } from '../context/ShopContext'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { motion } from 'framer-motion'
 
 const PlaceOrder = () => {
     const [method, setMethod] = useState('cod');
@@ -292,23 +293,110 @@ const PlaceOrder = () => {
                 <div className='mt-12'>
                     <Title text1={'PAYMENT'} text2={'METHOD'} />
                     {/* --------------- Payment Method Selection ------------- */}
-                    <div className='flex gap-3 flex-col lg:flex-row'>
-                        <div onClick={() => setMethod('stripe')} className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
-                            <p className={`min-w-3.5 h-3.5 border rounded-full ${method === 'stripe' ? 'bg-green-400' : ''}`}></p>
-                            <img className='h-5 mx-4' src={assets.stripe_logo} alt="" />
-                        </div>
-                        <div onClick={() => setMethod('razorpay')} className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
-                            <p className={`min-w-3.5 h-3.5 border rounded-full ${method === 'razorpay' ? 'bg-green-400' : ''}`}></p>
-                            <img className='h-5 mx-4' src={assets.razorpay_logo} alt="" />
-                        </div>
-                        <div onClick={() => setMethod('cod')} className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
-                            <p className={`min-w-3.5 h-3.5 border rounded-full ${method === 'cod' ? 'bg-green-400' : ''}`}></p>
-                            <p className='text-gray-500 text-sm font-medium mx-4'>CASH ON DELIVERY</p>
-                        </div>
-                    </div>
+                    <div className='space-y-6'>
+                        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                            {/* Stripe Payment Option */}
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setMethod('stripe')}
+                                className={`
+                                    flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300
+                                    ${method === 'stripe' 
+                                        ? 'border-green-500 bg-green-50 shadow-lg' 
+                                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                                    }
+                                `}
+                            >
+                                <div className={`
+                                    w-5 h-5 rounded-full border-2 flex items-center justify-center
+                                    ${method === 'stripe' ? 'border-green-500' : 'border-gray-300'}
+                                `}>
+                                    {method === 'stripe' && (
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="w-3 h-3 bg-green-500 rounded-full"
+                                        />
+                                    )}
+                                </div>
+                                <img className='h-6' src={assets.stripe_logo} alt="Stripe" />
+                            </motion.div>
 
-                    <div className='w-full text-end mt-8'>
-                        <button type='submit' className='bg-black text-white px-16 py-3 text-sm'>PLACE ORDER</button>
+                            {/* Razorpay Payment Option */}
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setMethod('razorpay')}
+                                className={`
+                                    flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300
+                                    ${method === 'razorpay' 
+                                        ? 'border-green-500 bg-green-50 shadow-lg' 
+                                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                                    }
+                                `}
+                            >
+                                <div className={`
+                                    w-5 h-5 rounded-full border-2 flex items-center justify-center
+                                    ${method === 'razorpay' ? 'border-green-500' : 'border-gray-300'}
+                                `}>
+                                    {method === 'razorpay' && (
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="w-3 h-3 bg-green-500 rounded-full"
+                                        />
+                                    )}
+                                </div>
+                                <img className='h-6' src={assets.razorpay_logo} alt="Razorpay" />
+                            </motion.div>
+
+                            {/* COD Payment Option */}
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setMethod('cod')}
+                                className={`
+                                    flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300
+                                    ${method === 'cod' 
+                                        ? 'border-green-500 bg-green-50 shadow-lg' 
+                                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                                    }
+                                `}
+                            >
+                                <div className={`
+                                    w-5 h-5 rounded-full border-2 flex items-center justify-center
+                                    ${method === 'cod' ? 'border-green-500' : 'border-gray-300'}
+                                `}>
+                                    {method === 'cod' && (
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="w-3 h-3 bg-green-500 rounded-full"
+                                        />
+                                    )}
+                                </div>
+                                <span className='text-gray-700 font-medium'>Cash On Delivery</span>
+                            </motion.div>
+                        </div>
+
+                        <div className='w-full flex justify-end mt-8'>
+                            <motion.button
+                                type='submit'
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className='bg-black text-white px-16 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-300 flex items-center gap-2 shadow-lg'
+                            >
+                                <span>Place Order</span>
+                                <motion.span 
+                                    initial={{ x: 0 }}
+                                    animate={{ x: [0, 5, 0] }}
+                                    transition={{ repeat: Infinity, duration: 1.5 }}
+                                >
+                                    →
+                                </motion.span>
+                            </motion.button>
+                        </div>
                     </div>
                 </div>
             </div>

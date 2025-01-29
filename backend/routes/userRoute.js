@@ -10,7 +10,8 @@ import {
   sendResetOtp,
   resetPassword,
   getUserProfile,
-  updateUserProfile, // Add this line
+  updateUserProfile,
+  googleAuth,
 } from '../controllers/userController.js';
 
 import authUser from '../middleware/auth.js';
@@ -21,13 +22,13 @@ userRouter.post('/register', registerUser);
 userRouter.post('/login', loginUser);
 userRouter.post('/logout', logout);
 userRouter.post('/send-verify-otp', authUser, sendverifyOtp);
-userRouter.post('/verify-Email', authUser, verifyEmail);
+userRouter.post('/verify-email', authUser, verifyEmail);
 userRouter.get('/is-auth', authUser, isAuthenticated);
 userRouter.post('/send-reset-otp', sendResetOtp);
 userRouter.post('/reset-password', resetPassword);
 userRouter.get('/profile', authUser, getUserProfile);
 userRouter.put('/profile/update', authUser, updateUserProfile); // Add this line
-
+userRouter.post('/google-auth', googleAuth);
 userRouter.post('/admin', adminLogin);
 
 export default userRouter;

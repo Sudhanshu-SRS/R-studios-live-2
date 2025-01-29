@@ -76,6 +76,24 @@ const Footer = () => {
                 Return & Refund Policy
               </Link>
             </li>
+            <li>
+              <Link
+                to="/shipping-policy"
+                className="hover:text-[#00BFAE] transition-all duration-300 transform hover:scale-105 font-poppins"
+                onClick={scrollToTop}
+              >
+                Shipping Policy
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/terms"
+                className="hover:text-[#00BFAE] transition-all duration-300 transform hover:scale-105 font-poppins"
+                onClick={scrollToTop}
+              >
+                Terms & Conditions
+              </Link>
+            </li>
           </ul>
         </div>
 

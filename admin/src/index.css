@@ -17,3 +17,32 @@ select,input,textarea{
     background-color: #ffebf5;
     border-color: #C586A5;
 }
+/* Add these styles to your CSS file
+@keyframes shine {
+    0% {
+      transform: translateX(-100%) skewX(-15deg);
+    }
+    50% {
+      transform: translateX(100%) skewX(-15deg);
+    }
+    100% {
+      transform: translateX(100%) skewX(-15deg);
+    }
+  }
+  
+  .group:hover .shine {
+    animation: shine 2s infinite;
+  }
+  
+  /* Smooth image loading */
+  /* img {
+    transition: filter 0.3s ease-in-out;
+  }
+  
+  img:not([loaded]) {
+    filter: blur(10px);
+  }
+  
+  img[loaded] {
+    filter: blur(0);
+  } */ 

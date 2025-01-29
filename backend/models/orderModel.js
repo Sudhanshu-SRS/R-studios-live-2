@@ -11,5 +11,11 @@ const orderSchema = new mongoose.Schema({
     date: {type: Number, required:true}
 })
 
-const orderModel = mongoose.models.order || mongoose.model('order',orderSchema)
+// Add any methods or middleware here if needed
+orderSchema.pre('save', function(next) {
+    // Any pre-save logic
+    next();
+});
+
+const orderModel = mongoose.models.order || mongoose.model('order', orderSchema)
 export default orderModel;
