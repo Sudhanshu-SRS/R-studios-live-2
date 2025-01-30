@@ -169,9 +169,36 @@ const registerUser = async (req, res) => {
     const mailOptions = {
       from: process.env.SENDER_EMAIL,
       to: email,
-      subject: "WELCOME TO R-Studio",
-      text: `Hello ${name}, Welcome to R-Studio. We are happy to have you with us. Your Accout Has Been Created With Email id: ${email} and Phone Number: ${phone}`,
+      subject: "Welcome to R-Studio 🎉",
+      html: `
+        <html>
+          <body style="font-family: 'Arial', sans-serif; background-color: #f9f9f9; padding: 20px; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; padding: 30px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+              <h2 style="color: #2C3E50; text-align: center;">Welcome to <span style="color: #00bcd4;">R-Studio</span> 🎉</h2>
+              
+              <p style="line-height: 1.8;">Hello <strong>${name}</strong>,</p>
+              <p style="line-height: 1.8;">We're thrilled to have you join the R-Studio family! Below are your account details:</p>
+              
+              <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 16px;"><strong>Email:</strong> ${email}</p>
+                <p style="margin: 0; font-size: 16px;"><strong>Phone Number:</strong> ${phone}</p>
+              </div>
+              
+              <p style="line-height: 1.8;">Get ready to explore exclusive offers, curated collections, and much more on R-Studio!</p>
+              
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="https://www.rashistudio.com" style="display: inline-block; background-color: #00bcd4; color: white; padding: 12px 25px; font-size: 16px; border-radius: 5px; text-decoration: none;">Visit R-Studio</a>
+              </div>
+    
+              <p style="margin-top: 20px; text-align: center; font-size: 14px; color: #666;">
+                Thank you for choosing R-Studio. We look forward to serving you!
+              </p>
+            </div>
+          </body>
+        </html>
+      `,
     };
+    
 
     await transporter.sendMail(mailOptions);
 
@@ -246,29 +273,103 @@ const sendverifyOtp = async (req, res) => {
 
         // Send OTP via email
         const mailOptions = {
-            from: process.env.SENDER_EMAIL,
-            to: user.email,
-            subject: "R-Studio Email Verification OTP",
-            html: `
+          from: process.env.SENDER_EMAIL,
+          to: user.email,
+          subject: "🔑 R-Studio Email Verification OTP",
+          html: `
             <html>
-                <body style="font-family: Arial, sans-serif; color: #333; padding: 20px; background-color: #f4f4f9;">
-                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-                        <h2 style="color: #2c3e50;">Hello ${user.name},</h2>
-                        <p style="font-size: 16px; color: #555;">
-                            Thank you for signing up with R-Studio! To complete your registration, please use the following OTP:
-                        </p>
-                        <h3 style="font-size: 24px; color: #e74c3c; font-weight: bold; text-align: center;">${otp}</h3>
-                        <p style="font-size: 16px; color: #555;">
-                            This OTP will expire in 15 minutes. If you did not request this, please ignore this message.
-                        </p>
-                        <p style="font-size: 14px; color: #777; text-align: center;">
-                            Best regards,<br/>The R-Studio Team
-                        </p>
-                    </div>
-                </body>
+              <head>
+                <style>
+                  @keyframes fadeIn {
+                    from {
+                      opacity: 0;
+                      transform: translateY(-20px);
+                    }
+                    to {
+                      opacity: 1;
+                      transform: translateY(0);
+                    }
+                  }
+        
+                  @keyframes pulse {
+                    0% {
+                      box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+                    }
+                    70% {
+                      box-shadow: 0 0 15px 15px rgba(231, 76, 60, 0);
+                    }
+                    100% {
+                      box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+                    }
+                  }
+        
+                  .container {
+                    font-family: 'Arial', sans-serif;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background-color: #ffffff;
+                    border-radius: 10px;
+                    padding: 30px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    animation: fadeIn 1.2s ease-in-out;
+                  }
+        
+                  .otp-box {
+                    background-color: #fceaea;
+                    border: 2px solid #e74c3c;
+                    color: #e74c3c;
+                    font-size: 26px;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 15px;
+                    border-radius: 8px;
+                    letter-spacing: 3px;
+                    animation: pulse 2s infinite;
+                  }
+        
+                  .cta-button {
+                    display: block;
+                    width: fit-content;
+                    margin: 20px auto;
+                    padding: 12px 30px;
+                    background-color: #2ecc71;
+                    color: white;
+                    font-size: 16px;
+                    font-weight: bold;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4);
+                    transition: transform 0.2s ease-in-out;
+                    text-align: center;
+                  }
+        
+                  .cta-button:hover {
+                    transform: scale(1.05);
+                  }
+                </style>
+              </head>
+              <body style="background-color: #f4f4f9; padding: 20px;">
+                <div class="container">
+                  <h2 style="color: #2c3e50;">Hello ${user.name},</h2>
+                  <p style="font-size: 16px; color: #555;">
+                    Thank you for signing up with R-Studio! To complete your registration, please use the following OTP:
+                  </p>
+                  <div class="otp-box">
+                    ${otp}
+                  </div>
+                  <p style="font-size: 16px; color: #555;">
+                    This OTP will expire in <strong>15 minutes</strong>. If you did not request this, please ignore this message.
+                  </p>
+                  <a href="#" class="cta-button">Verify Now</a>
+                  <p style="font-size: 14px; color: #777; text-align: center; margin-top: 20px;">
+                    Best regards,<br/>The R-Studio Team
+                  </p>
+                </div>
+              </body>
             </html>
-    `
+          `
         };
+        
 
         await transporter.sendMail(mailOptions);
 
@@ -386,9 +487,37 @@ const sendResetOtp = async (req, res) => {
     const mailOptions = {
       from: process.env.SENDER_EMAIL,
       to: user.email,
-      subject: "R-Studio Password Reset Otp",
-      text: `Hello ${user.name || "user"}, Your Password Reset OTP is ${otp}. This OTP will expire in 15 minutes.`,
+      subject: "🔑 R-Studio Password Reset OTP",
+      html: `
+        <html>
+          <body style="font-family: 'Arial', sans-serif; background-color: #f9f9f9; padding: 20px; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; padding: 30px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); text-align: center;">
+              <h2 style="color: #2C3E50;">🔐 Password Reset Request</h2>
+    
+              <img src="https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif" alt="Password Reset" style="width: 100%; max-width: 250px; border-radius: 10px; margin: 20px auto;" />
+    
+              <p style="font-size: 16px; line-height: 1.8;">Hello <strong>${user.name || "User"}</strong>,</p>
+              <p style="font-size: 16px;">We received a request to reset your R-Studio account password. Please use the OTP below to reset it.</p>
+    
+              <div style="display: inline-block; padding: 10px 20px; background-color: #00bcd4; color: white; font-size: 22px; font-weight: bold; letter-spacing: 4px; border-radius: 5px; margin: 20px 0;">
+                ${otp}
+              </div>
+    
+              <p style="font-size: 14px; color: #666;">This OTP will expire in <strong>15 minutes</strong>.</p>
+    
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="https://www.rashistudio.com/password-reset" style="display: inline-block; background-color: #4CAF50; color: white; padding: 12px 25px; font-size: 16px; border-radius: 5px; text-decoration: none;">Reset Password Now</a>
+              </div>
+    
+              <p style="margin-top: 30px; font-size: 12px; color: #888;">
+                If you didn't request this, please ignore this email or contact support if you have any concerns.
+              </p>
+            </div>
+          </body>
+        </html>
+      `,
     };
+    
     await transporter.sendMail(mailOptions);
     res.json({
       success: true,
@@ -471,22 +600,61 @@ const googleAuth = async (req, res) => {
            const mailOptions = {
             from: process.env.SENDER_EMAIL,
             to: email,
-            subject: "WELCOME TO R-Studio",
+            subject: "🎉 Welcome to R-Studio!",
             html: `
-                <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
-                    <h2>Welcome to R-Studio!</h2>
-                    <p>Hello ${name},</p>
-                    <p>Thank you for joining R-Studio using Google Sign-In. We're excited to have you with us!</p>
-                    <p>Your account has been successfully created with:</p>
-                    <ul>
-                        <li>Email: ${email}</li>
-                        <li>Name: ${name}</li>
+              <div style="font-family: 'Arial', sans-serif; color: #333; background-color: #f9f9f9; padding: 40px;">
+                <div style="max-width: 600px; margin: auto; background-color: white; border-radius: 10px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); padding: 40px; animation: fadeIn 1.5s ease-in-out;">
+                  
+                  <div style="text-align: center;">
+                    <img src="https://media.giphy.com/media/5ntdy5Ban1dIY/giphy.gif" alt="Welcome" style="width: 200px; border-radius: 50%; margin-bottom: 20px;" />
+                  </div>
+                  
+                  <h2 style="color: #2c3e50; text-align: center; font-size: 26px;">🎉 Welcome to R-Studio!</h2>
+          
+                  <p style="font-size: 16px; color: #555; text-align: center;">
+                    Hello <strong>${name}</strong>, <br>
+                    We're thrilled to have you with us! You've successfully joined R-Studio using Google Sign-In.
+                  </p>
+          
+                  <div style="background-color: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="font-size: 14px; margin: 0; color: #333;">Your account details:</p>
+                    <ul style="list-style: none; padding: 0; margin: 10px 0;">
+                      <li><strong>Email:</strong> ${email}</li>
+                      <li><strong>Name:</strong> ${name}</li>
                     </ul>
-                    <p>Start exploring our collection now!</p>
-                    <p>Best regards,<br/>The R-Studio Team</p>
+                  </div>
+          
+                  <div style="text-align: center; margin-top: 20px;">
+                    <a href="https://rashistudio.com" style="display: inline-block; background-color: #00bcd4; color: white; text-decoration: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 188, 212, 0.4); transition: transform 0.2s ease-in-out;">
+                      Explore Now
+                    </a>
+                  </div>
+          
+                  <p style="margin-top: 20px; color: #888; text-align: center;">
+                    Thank you for joining our community! We can't wait to see what you'll discover.
+                  </p>
+          
+                  <p style="margin-top: 30px; text-align: center; font-size: 12px; color: #999;">
+                    If you did not sign up for this account, please contact us immediately.
+                  </p>
                 </div>
+              </div>
+          
+              <style>
+                @keyframes fadeIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(-20px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+              </style>
             `
-        };
+          };
+          
 
         await transporter.sendMail(mailOptions);
       }

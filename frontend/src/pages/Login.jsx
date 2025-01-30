@@ -78,14 +78,25 @@ const Login = () => {
           email,
           password,
         });
+        
         if (response.data.success) {
           setToken(response.data.token);
           localStorage.setItem("token", response.data.token);
-          navigate('/'); // Navigate after successful registration
+          navigate('/');
         } else {
-          toast.error(response.data.message);
+          // If user already exists, switch to login state
+          if (response.data.message.includes("User already exists")) {
+            toast.info("Account already exists. Please login.");
+            setCurrentState("Login");
+            // Clear the name field but keep the email
+            setName("");
+            setPassword("");
+          } else {
+            toast.error(response.data.message);
+          }
         }
       } else {
+        // Rest of your login code...
         response = await axios.post(`${backendUrl}/api/user/login`, {
           email,
           password,
@@ -93,7 +104,7 @@ const Login = () => {
         if (response.data.success) {
           setToken(response.data.token);
           localStorage.setItem("token", response.data.token);
-          navigate('/'); // Navigate after successful login
+          navigate('/');
         } else {
           toast.error(response.data.message);
         }
@@ -102,7 +113,7 @@ const Login = () => {
       console.error(error);
       toast.error(error?.response?.data?.message || error.message);
     }
-  };
+};
 
   const handleGoogleSignIn = async () => {
     try {

@@ -23,13 +23,13 @@ const sendOrderEmails = async (orderDetails, items, transactionId = null) => {
     try {
         // Admin email template
         const adminEmailHtml = `
-            <html>
-  <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333;">
-    <div style="max-width: 700px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-      <h2 style="text-align: center; color: #2C3E50;">New Order Received!</h2>
+          <html>
+  <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333; margin: 0; overflow-x: hidden;">
+    <div style="max-width: 700px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); transition: all 0.3s ease-in-out;">
+      <h2 style="text-align: center; color: #2C3E50; font-size: 24px; transition: color 0.3s ease-in-out;">New Order Received!</h2>
       
-      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
-        <h3 style="color: #34495E;">Order Details:</h3>
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; transition: background-color 0.3s ease-in-out;">
+        <h3 style="color: #34495E; font-size: 18px;">Order Details:</h3>
         <p><strong>Order ID:</strong> ${orderDetails._id}</p>
         <p><strong>Customer Name:</strong> ${orderDetails.address.firstName} ${orderDetails.address.lastName}</p>
         <p><strong>Email:</strong> ${orderDetails.address.email}</p>
@@ -37,80 +37,146 @@ const sendOrderEmails = async (orderDetails, items, transactionId = null) => {
         <p><strong>Total Amount:</strong> ₹${orderDetails.amount}</p>
         <p><strong>Payment Method:</strong> ${orderDetails.paymentMethod}</p>
         <p><strong>Payment Status:</strong> 
-          <span style="color: ${orderDetails.payment ? '#27ae60' : '#c0392b'};">
+          <span style="color: ${orderDetails.payment ? '#27ae60' : '#c0392b'}; transition: color 0.3s ease-in-out;">
             ${orderDetails.payment ? 'Paid' : 'Pending'}
           </span>
         </p>
         ${transactionId ? `<p><strong>Transaction ID:</strong> ${transactionId}</p>` : ''}
 
-        <h3 style="color: #34495E; margin-top: 20px;">Shipping Address:</h3>
+        <h3 style="color: #34495E; font-size: 18px; margin-top: 30px;">Shipping Address:</h3>
         <p>${orderDetails.address.street}</p>
         <p>${orderDetails.address.city}, ${orderDetails.address.state}</p>
         <p>${orderDetails.address.zipcode}, ${orderDetails.address.country}</p>
 
-        <h3 style="color: #34495E; margin-top: 30px;">Ordered Items:</h3>
+        <h3 style="color: #34495E; font-size: 18px; margin-top: 30px;">Ordered Items:</h3>
         ${items.map(item => `
-          <div style="display: flex; align-items: center; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-            <img src="${item.image[0]}" alt="${item.name}" style="width: 80px; height: auto; border-radius: 5px; margin-right: 15px;" />
+          <div style="display: flex; align-items: center; background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 15px; transition: all 0.3s ease-in-out; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+            <img src="${item.image[0]}" alt="${item.name}" style="width: 80px; height: auto; border-radius: 5px; margin-right: 20px; transition: transform 0.3s ease-in-out;"/>
             <div>
-              <p style="margin: 0; font-weight: bold;">${item.name}</p>
-              <p style="margin: 0; font-size: 14px;">Size: ${item.size}, Quantity: ${item.quantity}</p>
+              <p style="margin: 0; font-weight: bold; font-size: 16px;">${item.name}</p>
+              <p style="margin: 0; font-size: 14px; color: #7f8c8d;">Size: ${item.size}, Quantity: ${item.quantity}</p>
               <p style="margin: 0; font-size: 14px; color: #2C3E50;">Price: ₹${item.price}</p>
             </div>
           </div>
         `).join('')}
       </div>
     </div>
+
+    <!-- Animation and transition effect -->
+    <style>
+      body {
+        transition: background-color 0.5s ease, color 0.5s ease;
+      }
+
+      .container:hover {
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        transform: translateY(-5px);
+      }
+
+      .container h2:hover {
+        color: #2980b9;
+      }
+
+      .container .item:hover {
+        transform: scale(1.05);
+      }
+
+      .container img:hover {
+        transform: scale(1.1);
+      }
+
+      .container .item {
+        transition: transform 0.3s ease-in-out;
+      }
+
+      .container .item:hover img {
+        transform: scale(1.1);
+      }
+    </style>
   </body>
 </html>
+
 
         `;
 
         // Update the customer email template similarly
         const customerEmailHtml = `
-           <html>
-  <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333;">
-    <div style="max-width: 700px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-      <h2 style="text-align: center; color: #2C3E50;">Thank you for your order!</h2>
+       <html>
+  <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333; margin: 0; overflow-x: hidden;">
+    <div style="max-width: 700px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); transition: all 0.3s ease-in-out;">
+      <h2 style="text-align: center; color: #2C3E50; font-size: 24px; transition: color 0.3s ease-in-out;">Thank you for your order!</h2>
       
       <p>Dear ${orderDetails.address.firstName},</p>
       <p>Your order has been successfully placed.</p>
 
-      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
-        <h3 style="color: #34495E;">Payment & Order Details:</h3>
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; transition: background-color 0.3s ease-in-out;">
+        <h3 style="color: #34495E; font-size: 18px;">Payment & Order Details:</h3>
         <p><strong>Payment Method:</strong> ${orderDetails.paymentMethod}</p>
         <p><strong>Payment Status:</strong> 
-          <span style="color: ${orderDetails.payment ? '#27ae60' : '#c0392b'};">
+          <span style="color: ${orderDetails.payment ? '#27ae60' : '#c0392b'}; transition: color 0.3s ease-in-out;">
             ${orderDetails.payment ? 'Paid' : 'Pending'}
           </span>
         </p>
         ${transactionId ? `<p><strong>Transaction ID:</strong> ${transactionId}</p>` : ''}
 
-        <h3 style="color: #34495E; margin-top: 20px;">Order Summary:</h3>
+        <h3 style="color: #34495E; font-size: 18px; margin-top: 20px;">Order Summary:</h3>
         <p><strong>Subtotal:</strong> ₹${orderDetails.amount - 150}</p>
         <p><strong>Shipping:</strong> ₹150</p>
         <p><strong>Total Amount:</strong> ₹${orderDetails.amount}</p>
 
-        <h3 style="color: #34495E; margin-top: 20px;">Shipping Address:</h3>
+        <h3 style="color: #34495E; font-size: 18px; margin-top: 20px;">Shipping Address:</h3>
         <p>${orderDetails.address.street}</p>
         <p>${orderDetails.address.city}, ${orderDetails.address.state}</p>
         <p>${orderDetails.address.zipcode}, ${orderDetails.address.country}</p>
 
-        <h3 style="color: #34495E; margin-top: 30px;">Ordered Items:</h3>
+        <h3 style="color: #34495E; font-size: 18px; margin-top: 30px;">Ordered Items:</h3>
         ${items.map(item => `
-          <div style="display: flex; align-items: center; background-color: #f9f9f9; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-            <img src="${item.image[0]}" alt="${item.name}" style="width: 80px; height: auto; border-radius: 5px; margin-right: 15px;" />
+          <div style="display: flex; align-items: center; background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 15px; transition: all 0.3s ease-in-out; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+            <img src="${item.image[0]}" alt="${item.name}" style="width: 80px; height: auto; border-radius: 5px; margin-right: 20px; transition: transform 0.3s ease-in-out;"/>
             <div>
-              <p style="margin: 0; font-weight: bold;">${item.name}</p>
-              <p style="margin: 0; font-size: 14px;">Size: ${item.size}, Quantity: ${item.quantity}</p>
+              <p style="margin: 0; font-weight: bold; font-size: 16px;">${item.name}</p>
+              <p style="margin: 0; font-size: 14px; color: #7f8c8d;">Size: ${item.size}, Quantity: ${item.quantity}</p>
               <p style="margin: 0; font-size: 14px; color: #2C3E50;">Price: ₹${item.price}</p>
             </div>
           </div>
         `).join('')}
       </div>
     </div>
+
+    <!-- Animation and transition effect -->
+    <style>
+      body {
+        transition: background-color 0.5s ease, color 0.5s ease;
+      }
+
+      .container:hover {
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        transform: translateY(-5px);
+      }
+
+      .container h2:hover {
+        color: #2980b9;
+      }
+
+      .container .item:hover {
+        transform: scale(1.05);
+      }
+
+      .container img:hover {
+        transform: scale(1.1);
+      }
+
+      .container .item {
+        transition: transform 0.3s ease-in-out;
+      }
+
+      .container .item:hover img {
+        transform: scale(1.1);
+      }
+    </style>
   </body>
 </html>
+
 
         `;
 
@@ -549,17 +615,134 @@ const userOrders = async (req,res) => {
 // update order status from Admin Panel
 const updateStatus = async (req, res) => {
     try {
-        const { orderId, status } = req.body;
+        const { orderId, status, sendEmail: shouldSendEmail } = req.body;
         const order = await orderModel.findById(orderId);
 
-        if (status === "Shipped" && order.shipmentId) {
-            // Get tracking details
-            try {
-                const tracking = await shiprocketService.getTracking(order.awbCode);
-                order.trackingStatus = tracking.current_status;
-            } catch (error) {
-                console.error('Tracking fetch error:', error);
-            }
+        if (status === "Packing" && shouldSendEmail) {
+            const packingEmailHtml = `
+            <html>
+              <head>
+                <style>
+                  @keyframes fadeIn {
+                    from {
+                      opacity: 0;
+                      transform: translateY(-10px);
+                    }
+                    to {
+                      opacity: 1;
+                      transform: translateY(0);
+                    }
+                  }
+          
+                  .email-container {
+                    font-family: 'Arial', sans-serif;
+                    background-color: #f4f4f4;
+                    padding: 40px 0;
+                    text-align: center;
+                    animation: fadeIn 1.2s ease-in-out;
+                  }
+          
+                  .content-box {
+                    max-width: 650px;
+                    margin: auto;
+                    background-color: #ffffff;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+                  }
+          
+                  .header {
+                    color: #2c3e50;
+                    text-align: center;
+                    font-size: 28px;
+                    font-weight: bold;
+                    margin-bottom: 20px;
+                  }
+          
+                  .order-details {
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin: 20px 0;
+                    text-align: left;
+                  }
+          
+                  .order-item {
+                    display: flex;
+                    align-items: center;
+                    margin: 10px 0;
+                    padding: 10px;
+                    background-color: #f8f9fa;
+                    border-radius: 8px;
+                  }
+          
+                  .order-item img {
+                    width: 60px;
+                    height: 60px;
+                    object-fit: cover;
+                    border-radius: 8px;
+                    margin-right: 15px;
+                  }
+          
+                  .button {
+                    background-color: #00bfae;
+                    color: white;
+                    padding: 12px 30px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    border: none;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    display: inline-block;
+                    margin-top: 20px;
+                    box-shadow: 0 6px 12px rgba(0, 191, 174, 0.4);
+                    transition: transform 0.3s ease-in-out;
+                  }
+          
+                  .button:hover {
+                    transform: scale(1.05);
+                  }
+                </style>
+              </head>
+              <body class="email-container">
+                <div class="content-box">
+                  <h2 class="header">📦 Order Packing Update</h2>
+                  <div class="order-details">
+                    <p><strong>Order ID:</strong> #${order._id}</p>
+                    <p>We've started packing your order! Our team is carefully preparing your items for shipment.</p>
+                  </div>
+          
+                  <div>
+                    <h3 style="color: #2c3e50;">Your Order Items:</h3>
+                    ${order.items.map(item => `
+                      <div class="order-item">
+                        <img src="${item.image[0]}" alt="${item.name}" />
+                        <div>
+                          <p style="margin: 0; font-weight: bold;">${item.name}</p>
+                          <p style="margin: 5px 0; color: #666;">Size: ${item.size} × ${item.quantity}</p>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+          
+                  <p style="color: #666; margin-top: 20px;">
+                    You'll receive another email when your order ships with tracking details.
+                  </p>
+          
+                  <a href="https://www.r-studio.com/orders/${order._id}" class="button">
+                    View Order Details
+                  </a>
+                </div>
+              </body>
+            </html>
+          `;
+          
+
+            await sendEmail({
+                to: order.address.email,
+                subject: `Order #${order._id} - Packing Started`,
+                html: packingEmailHtml
+            });
         }
 
         order.status = status;
@@ -638,43 +821,132 @@ const cancelOrder = async (req, res) => {
         // Send cancellation email with reason
         try {
             const cancelEmailHtml = `
-                <html>
-                    <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333;">
-                        <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                            <h2 style="color: #e74c3c; text-align: center;">Order Cancellation Confirmation</h2>
-                            
-                            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-                                                            <p><strong>Customer Name:</strong> ${order.address.firstName} ${order.address.lastName}</p>
-   
-                            <p><strong>Order ID:</strong> #${order._id}</p>
-                                <p><strong>Cancellation Date:</strong> ${new Date().toLocaleString()}</p>
-                                <p><strong>Total Amount:</strong> ₹${order.amount}</p>
-                                <p><strong>Cancellation Reason:</strong> ${reason}</p>
-                                <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
-                                <p><strong>The Amount Will Be Refunded in 4-5 Banking Days If Not Please Contact Our Customer Support</strong></p>
-                            </div>
+<html>
+  <head>
+    <style>
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-                            <div style="margin-top: 20px;">
-                                <h3 style="color: #2c3e50;">Cancelled Items:</h3>
-                                ${order.items.map(item => `
-                                    <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-                                        <img src="${item.image[0]}" alt="${item.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px; margin-right: 15px;" />
-                                        <div>
-                                            <p style="margin: 0; font-weight: bold;">${item.name}</p>
-                                            <p style="margin: 5px 0; color: #666;">Size: ${item.size} × ${item.quantity}</p>
-                                            <p style="margin: 0; color: #666;">₹${item.price}</p>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
+      .email-container {
+        font-family: 'Arial', sans-serif;
+        background-color: #f9f9f9;
+        padding: 40px 0;
+        text-align: center;
+        animation: fadeIn 1.2s ease-in-out;
+      }
 
-                            <p style="margin-top: 30px; text-align: center; color: #666;">
-                                If you have any questions about this cancellation, please contact our customer support.
-                            </p>
-                        </div>
-                    </body>
-                </html>
-            `;
+      .content-box {
+        max-width: 650px;
+        margin: auto;
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 1.5s ease-in-out;
+      }
+
+      .header {
+        color: #e74c3c;
+        text-align: center;
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+
+      .order-details {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        text-align: left;
+      }
+
+      .order-item {
+        display: flex;
+        align-items: center;
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+      }
+
+      .order-item img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-right: 15px;
+      }
+
+      .button {
+        background-color: #e74c3c;
+        color: white;
+        padding: 12px 30px;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 20px;
+        box-shadow: 0 6px 12px rgba(231, 76, 60, 0.4);
+        transition: transform 0.3s ease-in-out;
+      }
+
+      .button:hover {
+        transform: scale(1.05);
+      }
+    </style>
+  </head>
+  <body class="email-container">
+    <div class="content-box">
+      <h2 class="header">🚫 Order Cancellation Confirmation</h2>
+      <div class="order-details">
+        <p><strong>Customer Name:</strong> ${order.address.firstName} ${order.address.lastName}</p>
+        <p><strong>Order ID:</strong> #${order._id}</p>
+        <p><strong>Cancellation Date:</strong> ${new Date().toLocaleString()}</p>
+        <p><strong>Total Amount:</strong> ₹${order.amount}</p>
+        <p><strong>Cancellation Reason:</strong> ${reason}</p>
+        <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+        <p style="color: #777; font-size: 14px;">
+          The amount will be refunded within 4-5 banking days. If not, please contact our customer support.
+        </p>
+      </div>
+
+      <div>
+        <h3 style="color: #2c3e50;">Cancelled Items:</h3>
+        ${order.items.map(item => `
+          <div class="order-item">
+            <img src="${item.image[0]}" alt="${item.name}" />
+            <div>
+              <p style="margin: 0; font-weight: bold;">${item.name}</p>
+              <p style="margin: 5px 0; color: #666;">Size: ${item.size} × ${item.quantity}</p>
+              <p style="margin: 0; color: #666;">₹${item.price}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <p style="color: #666; margin-top: 30px;">
+        If you have any questions about this cancellation, please contact our customer support.
+      </p>
+
+      <a href="https://www.r-studio.com/support" class="button">
+        Contact Support
+      </a>
+    </div>
+  </body>
+</html>
+`;
+
 
             await sendEmail({
                 to: order.address.email,
