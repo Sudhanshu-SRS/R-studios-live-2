@@ -1,9 +1,22 @@
 import express from 'express'
-import {placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus, verifyStripe, verifyRazorpay} from '../controllers/orderController.js'
+import {
+    placeOrder, 
+    placeOrderStripe, 
+    placeOrderRazorpay, 
+    allOrders, 
+    userOrders, 
+    updateStatus, 
+    verifyStripe, 
+    verifyRazorpay,
+    cancelOrder // Add this import
+} from '../controllers/orderController.js'
 import adminAuth  from '../middleware/adminAuth.js'
 import authUser from '../middleware/auth.js'
 
 const orderRouter = express.Router()
+
+// Add the cancel route
+orderRouter.post('/cancel', adminAuth, cancelOrder)
 
 // Admin Features
 orderRouter.post('/list',adminAuth,allOrders)

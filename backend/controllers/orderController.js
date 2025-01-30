@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import razorpay from 'razorpay'
 import { sendEmail } from '../util/email.js';
 import productModel from "../models/productModel.js";
+import shiprocketService from '../services/shiprocket.js';
 
 // global variables
 const currency = 'inr'
@@ -209,15 +210,14 @@ const validateStock = async (items) => {
     return true;
 };
 
-// Placing orders using COD Method
+// In orderController.js
 const placeOrder = async (req, res) => {
     try {
         const { userId, items, amount, address } = req.body;
 
-        // First update stock
-        await updateProductStock(items);
+        // Validate stock first
+        await validateStock(items);
 
-        // Then create order
         const orderData = {
             userId,
             items,
@@ -228,38 +228,63 @@ const placeOrder = async (req, res) => {
             date: Date.now()
         };
 
+        // Create order in database
         const newOrder = new orderModel(orderData);
         await newOrder.save();
 
-        // Clear cart
+        // Create Shiprocket order
+        try {
+            console.log('Creating Shiprocket order for:', newOrder);
+            
+            const shipmentResponse = await shiprocketService.createOrder(newOrder);
+            console.log('Shiprocket response:', shipmentResponse);
+
+            if (shipmentResponse?.shipment_id) {
+                newOrder.shipmentId = shipmentResponse.shipment_id;
+                newOrder.shiprocketOrderId = shipmentResponse.shiprocket_order_id;
+                newOrder.awbCode = shipmentResponse.awb_code;
+                newOrder.courierName = shipmentResponse.courier_name;
+                newOrder.trackingUrl = shipmentResponse.awb_code ? 
+                    `https://shiprocket.co/tracking/${shipmentResponse.awb_code}` : null;
+                await newOrder.save();
+
+                console.log('Order updated with Shiprocket details');
+            } else {
+                console.error('Missing shipment_id in Shiprocket response');
+            }
+        } catch (error) {
+            console.error('Shiprocket creation error:', error.response?.data || error);
+        }
+
+        // Rest of your code...
+        await updateProductStock(items);
         await userModel.findByIdAndUpdate(userId, { cartData: {} });
+        await sendOrderEmails(newOrder, items);
 
-        // Fetch updated products
-        const updatedProducts = await productModel.find({
-            _id: { $in: items.map(item => item._id) }
-        });
-
-        res.json({ 
-            success: true, 
-            message: "Order Placed Successfully",
-            updatedProducts 
+        res.json({
+            success: true,
+            message: "Order placed successfully",
+            order: newOrder
         });
 
     } catch (error) {
         console.error('Order placement error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to place order'
+        });
     }
 };
 
 // Placing orders using Stripe Method
-const placeOrderStripe = async (req,res) => {
+const placeOrderStripe = async (req, res) => {
     try {
         const { items } = req.body;
         
         // Validate stock before creating session
         await validateStock(items);
         
-        const { userId, amount, address} = req.body
+        const { userId, amount, address} = req.body;
         const { origin } = req.headers;
 
         const orderData = {
@@ -267,50 +292,75 @@ const placeOrderStripe = async (req,res) => {
             items,
             address,
             amount,
-            paymentMethod:"Stripe",
-            payment:false,
+            paymentMethod: "Stripe",
+            payment: false,
             date: Date.now()
-        }
+        };
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        const newOrder = new orderModel(orderData);
+        await newOrder.save();
+
+        // Create Shiprocket order
+        try {
+            console.log('Creating Shiprocket order for:', newOrder);
+            
+            const shipmentResponse = await shiprocketService.createOrder(newOrder);
+            console.log('Shiprocket response:', shipmentResponse);
+
+            if (shipmentResponse?.shipment_id) {
+                newOrder.shipmentId = shipmentResponse.shipment_id;
+                newOrder.shiprocketOrderId = shipmentResponse.shiprocket_order_id;
+                newOrder.awbCode = shipmentResponse.awb_code;
+                newOrder.courierName = shipmentResponse.courier_name;
+                newOrder.trackingUrl = shipmentResponse.awb_code ? 
+                    `https://shiprocket.co/tracking/${shipmentResponse.awb_code}` : null;
+                await newOrder.save();
+
+                console.log('Order updated with Shiprocket details');
+            } else {
+                console.error('Missing shipment_id in Shiprocket response');
+            }
+        } catch (error) {
+            console.error('Shiprocket creation error:', error.response?.data || error);
+            // Continue with order creation even if Shiprocket fails
+        }
 
         const line_items = items.map((item) => ({
             price_data: {
-                currency:currency,
+                currency: currency,
                 product_data: {
-                    name:item.name
+                    name: item.name
                 },
                 unit_amount: item.price * 100
             },
             quantity: item.quantity
-        }))
+        }));
 
         line_items.push({
             price_data: {
-                currency:currency,
+                currency: currency,
                 product_data: {
-                    name:'Delivery Charges'
+                    name: 'Delivery Charges'
                 },
                 unit_amount: deliveryCharge * 100
             },
             quantity: 1
-        })
+        });
 
         const session = await stripe.checkout.sessions.create({
             success_url: `${origin}/verify?success=true&orderId=${newOrder._id}`,
-            cancel_url:  `${origin}/verify?success=false&orderId=${newOrder._id}`,
+            cancel_url: `${origin}/verify?success=false&orderId=${newOrder._id}`,
             line_items,
             mode: 'payment',
-        })
+        });
 
-        res.json({success:true,session_url:session.url});
+        res.json({success: true, session_url: session.url});
 
     } catch (error) {
         console.error('Stripe order error:', error);
         res.status(400).json({ success: false, message: error.message });
     }
-}
+};
 
 // Verify Stripe 
 const verifyStripe = async (req, res) => {
@@ -369,6 +419,31 @@ const placeOrderRazorpay = async (req, res) => {
 
         const newOrder = new orderModel(orderData);
         await newOrder.save();
+
+        // Create Shiprocket order
+        try {
+            console.log('Creating Shiprocket order for:', newOrder);
+            
+            const shipmentResponse = await shiprocketService.createOrder(newOrder);
+            console.log('Shiprocket response:', shipmentResponse);
+
+            if (shipmentResponse?.shipment_id) {
+                newOrder.shipmentId = shipmentResponse.shipment_id;
+                newOrder.shiprocketOrderId = shipmentResponse.shiprocket_order_id;
+                newOrder.awbCode = shipmentResponse.awb_code;
+                newOrder.courierName = shipmentResponse.courier_name;
+                newOrder.trackingUrl = shipmentResponse.awb_code ? 
+                    `https://shiprocket.co/tracking/${shipmentResponse.awb_code}` : null;
+                await newOrder.save();
+
+                console.log('Order updated with Shiprocket details');
+            } else {
+                console.error('Missing shipment_id in Shiprocket response');
+            }
+        } catch (error) {
+            console.error('Shiprocket creation error:', error.response?.data || error);
+            // Continue with order creation even if Shiprocket fails
+        }
 
         const options = {
             amount: amount * 100,
@@ -472,18 +547,176 @@ const userOrders = async (req,res) => {
 }
 
 // update order status from Admin Panel
-const updateStatus = async (req,res) => {
+const updateStatus = async (req, res) => {
     try {
-        
-        const { orderId, status } = req.body
+        const { orderId, status } = req.body;
+        const order = await orderModel.findById(orderId);
 
-        await orderModel.findByIdAndUpdate(orderId, { status })
-        res.json({success:true,message:'Status Updated'})
+        if (status === "Shipped" && order.shipmentId) {
+            // Get tracking details
+            try {
+                const tracking = await shiprocketService.getTracking(order.awbCode);
+                order.trackingStatus = tracking.current_status;
+            } catch (error) {
+                console.error('Tracking fetch error:', error);
+            }
+        }
+
+        order.status = status;
+        await order.save();
+
+        res.json({
+            success: true,
+            message: 'Status Updated'
+        });
 
     } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
+        console.error(error);
+        res.json({
+            success: false,
+            message: error.message
+        });
     }
-}
+};
 
-export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus,updateProductStock,}
+// Add this function in orderController.js
+const cancelOrder = async (req, res) => {
+    try {
+        const { orderId, reason } = req.body;
+
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        // Don't allow cancellation of delivered orders
+        if (order.status === 'Delivered') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot cancel delivered orders'
+            });
+        }
+
+        // Cancel in Shiprocket if shipment exists
+        if (order.shiprocketOrderId) {
+            try {
+                await shiprocketService.cancelOrder(order.shiprocketOrderId);
+                console.log('Shiprocket order cancelled successfully');
+            } catch (error) {
+                console.error('Shiprocket cancellation error:', error);
+                // Continue with local cancellation even if Shiprocket fails
+            }
+        }
+
+        // Update order status
+        order.status = 'Cancelled';
+        order.cancellationReason = reason || 'No reason provided'; // Add fallback
+        await order.save();
+
+        // Return cancelled products to stock
+        for (const item of order.items) {
+            await productModel.findOneAndUpdate(
+                { 
+                    _id: item._id,
+                    'sizes.size': item.size 
+                },
+                {
+                    $inc: { 
+                        'sizes.$.quantity': item.quantity 
+                    }
+                }
+            );
+        } 
+        // Update order status and add reason
+        order.status = 'Cancelled';
+        order.cancellationReason = reason; // Add this field to your order model
+        await order.save();
+
+        // Send cancellation email with reason
+        try {
+            const cancelEmailHtml = `
+                <html>
+                    <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333;">
+                        <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                            <h2 style="color: #e74c3c; text-align: center;">Order Cancellation Confirmation</h2>
+                            
+                            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                                                            <p><strong>Customer Name:</strong> ${order.address.firstName} ${order.address.lastName}</p>
+   
+                            <p><strong>Order ID:</strong> #${order._id}</p>
+                                <p><strong>Cancellation Date:</strong> ${new Date().toLocaleString()}</p>
+                                <p><strong>Total Amount:</strong> ₹${order.amount}</p>
+                                <p><strong>Cancellation Reason:</strong> ${reason}</p>
+                                <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+                                <p><strong>The Amount Will Be Refunded in 4-5 Banking Days If Not Please Contact Our Customer Support</strong></p>
+                            </div>
+
+                            <div style="margin-top: 20px;">
+                                <h3 style="color: #2c3e50;">Cancelled Items:</h3>
+                                ${order.items.map(item => `
+                                    <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                                        <img src="${item.image[0]}" alt="${item.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px; margin-right: 15px;" />
+                                        <div>
+                                            <p style="margin: 0; font-weight: bold;">${item.name}</p>
+                                            <p style="margin: 5px 0; color: #666;">Size: ${item.size} × ${item.quantity}</p>
+                                            <p style="margin: 0; color: #666;">₹${item.price}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <p style="margin-top: 30px; text-align: center; color: #666;">
+                                If you have any questions about this cancellation, please contact our customer support.
+                            </p>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            await sendEmail({
+                to: order.address.email,
+                subject: `Order Cancelled - #${order._id}`,
+                html: cancelEmailHtml
+            });
+
+            // Send admin notification
+            await sendEmail({
+                to: process.env.ADMIN_EMAIL,
+                subject: `Order Cancellation Alert - #${order._id}`,
+                html: cancelEmailHtml
+            });
+
+        } catch (emailError) {
+            console.error('Failed to send cancellation email:', emailError);
+            // Continue with cancellation even if email fails
+        }
+
+        res.json({
+            success: true,
+            message: 'Order cancelled successfully'
+        });
+
+    } catch (error) {
+        console.error('Order cancellation error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to cancel order'
+        });
+    }
+};
+
+export {
+    verifyRazorpay,
+    verifyStripe,
+    placeOrder,
+    placeOrderStripe,
+    placeOrderRazorpay,
+    allOrders,
+    userOrders,
+    updateStatus,
+    cancelOrder, // Add this export
+    updateProductStock,
+}

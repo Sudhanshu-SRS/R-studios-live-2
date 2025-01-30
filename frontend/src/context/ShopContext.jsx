@@ -282,25 +282,25 @@ const ShopContextProvider = (props) => {
             throw error;
         }
     };
-
-    // Add refresh stock function
-    const refreshStock = async (productId) => {
-        try {
-            const response = await axios.get(`${backendUrl}/api/product/single`, {
-                params: { productId },
-                headers: { Authorization: `Bearer ${token}` }
-            });
+   
+    // // Add refresh stock function
+    // const refreshStock = async (productId) => {
+    //     try {
+    //         const response = await axios.get(`${backendUrl}/api/product/single`, {
+    //             params: { productId },
+    //             headers: { Authorization: `Bearer ${token}` }
+    //         });
             
-            if (response.data.success) {
-                setProducts(prev => prev.map(p => 
-                    p._id === productId ? response.data.product : p
-                ));
-                return response.data.product;
-            }
-        } catch (error) {
-            console.error('Error refreshing stock:', error);
-        }
-    };
+    //         if (response.data.success) {
+    //             setProducts(prev => prev.map(p => 
+    //                 p._id === productId ? response.data.product : p
+    //             ));
+    //             return response.data.product;
+    //         }
+    //     } catch (error) {
+    //         console.error('Error refreshing stock:', error);
+    //     }
+    // };
 
     // Add function to refresh all products
     const refreshAllProducts = async () => {
@@ -343,7 +343,7 @@ const ShopContextProvider = (props) => {
         setShowVerifyPopup,
         handleVerifyPopup,
         placeOrder,
-        refreshStock,
+        
         refreshAllProducts
     };
 

@@ -16,21 +16,15 @@ const ProductItem = ({
     onSizeError ,
     isDisabled = false
 }) => {
-    const { currency, addToCart, navigate, cartItems, updateProductStock, refreshStock } = useContext(ShopContext);
+    const { currency, addToCart, navigate, cartItems, refreshAllProducts } = useContext(ShopContext);
     const [selectedSize, setSelectedSize] = useState(defaultSize);
     const [localSizes, setLocalSizes] = useState([]);
     const [quantityLeft, setQuantityLeft] = useState(0);
 
-    // Add a function to refresh stock data
+    // Update local stock using refreshAllProducts
     const updateLocalStock = async () => {
         try {
-            const updatedProduct = await refreshStock(id);
-            if (updatedProduct) {
-                setLocalSizes(updatedProduct.sizes.map(size => ({
-                    ...size,
-                    quantity: Math.max(0, size.quantity - (cartItems[id]?.[size.size] || 0))
-                })));
-            }
+            await refreshAllProducts();
         } catch (error) {
             console.error('Error refreshing stock:', error);
         }
