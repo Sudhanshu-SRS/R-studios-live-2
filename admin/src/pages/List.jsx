@@ -380,6 +380,7 @@ const List = ({ token }) => {
         key={sizeData.size}
         className="flex flex-col gap-2 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
         whileHover={{ scale: 1.02 }}
+        onClick={(e) => e.stopPropagation()} // Stop propagation to prevent thumbnail
       >
         <div className="flex justify-between items-center">
           <label className="text-sm font-medium text-gray-700">
@@ -399,21 +400,26 @@ const List = ({ token }) => {
             min="0"
             value={stockQuantities[`${item._id}-${sizeData.size}`] ?? sizeData.quantity}
             onChange={(e) => {
+              e.stopPropagation(); // Stop propagation on input change
               setStockQuantities({
                 ...stockQuantities,
                 [`${item._id}-${sizeData.size}`]: e.target.value
               });
             }}
+            onClick={(e) => e.stopPropagation()} // Stop propagation on input click
             className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-500 text-center"
           />
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => updateStock(
-              item._id,
-              sizeData.size,
-              stockQuantities[`${item._id}-${sizeData.size}`] ?? sizeData.quantity
-            )}
+            onClick={(e) => {
+              e.stopPropagation(); // Stop propagation on button click
+              updateStock(
+                item._id,
+                sizeData.size,
+                stockQuantities[`${item._id}-${sizeData.size}`] ?? sizeData.quantity
+              );
+            }}
             className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center"
           >
             <FiSave className="w-4 h-4" />

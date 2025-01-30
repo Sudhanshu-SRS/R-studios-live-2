@@ -6,7 +6,7 @@ import { ShopContext } from '../context/ShopContext'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { motion } from 'framer-motion'
-
+import { Link } from 'react-router-dom';
 const PlaceOrder = () => {
     const [method, setMethod] = useState('cod');
     const [useSavedAddress, setUseSavedAddress] = useState(true);
@@ -22,8 +22,50 @@ const PlaceOrder = () => {
         country: '',
         phone: ''
     });
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPolicies, setAcceptPolicies] = useState(false);
+    const [isAddressValid, setIsAddressValid] = useState(false);
 
-    // Load saved address when component mounts or when useSavedAddress changes
+    // Check address validity whenever userData or formData changes
+    useEffect(() => {
+        if (userData?.address && useSavedAddress) {
+            // Check if saved address has all required fields
+            const savedAddress = userData.address;
+            const isValid = savedAddress.firstName && 
+                           savedAddress.lastName && 
+                           savedAddress.street && 
+                           savedAddress.city && 
+                           savedAddress.state && 
+                           savedAddress.zipcode && 
+                           savedAddress.country && 
+                           savedAddress.phone;
+            setIsAddressValid(isValid);
+        } else if (!useSavedAddress && formData.street) {
+            // Check if new address form has all required fields
+            const isValid = formData.firstName && 
+                           formData.lastName && 
+                           formData.email && 
+                           formData.street && 
+                           formData.city && 
+                           formData.state && 
+                           formData.zipcode && 
+                           formData.country && 
+                           formData.phone;
+            setIsAddressValid(isValid);
+        } else {
+            setIsAddressValid(false);
+        }
+    }, [userData, formData, useSavedAddress]);
+
+    // Set initial address state based on user data
+    useEffect(() => {
+        if (!userData?.address) {
+            setUseSavedAddress(false);
+            setIsAddressValid(false);
+        }
+    }, [userData]);
+
+    // Update form data when switching between saved and new address
     useEffect(() => {
         if (userData?.address && useSavedAddress) {
             setFormData({
@@ -38,7 +80,6 @@ const PlaceOrder = () => {
                 phone: userData.address.phone || ''
             });
         } else if (!useSavedAddress) {
-            // Clear form if user chooses to add new address
             setFormData({
                 firstName: '',
                 lastName: '',
@@ -114,8 +155,33 @@ const PlaceOrder = () => {
         rzp.open();
     };
 
+    const handlePaymentMethodSelect = (selectedMethod) => {
+        if (!isAddressValid) {
+            toast.error('Please provide a complete delivery address');
+            return;
+        }
+        setMethod(selectedMethod);
+    };
+
     const onSubmitHandler = async (event) => {
         event.preventDefault();
+
+        if (!isAddressValid) {
+            toast.error('Please provide a complete delivery address');
+            return;
+        }
+
+        if (!acceptTerms || !acceptPolicies) {
+            toast.error('Please accept the terms and policies');
+            return;
+        }
+
+        // Add payment method validation
+        if (!method) {
+            toast.error('Please select a payment method');
+            return;
+        }
+
         try {
             const storedToken = token || localStorage.getItem('token');
             
@@ -123,6 +189,33 @@ const PlaceOrder = () => {
                 toast.error('Please login to place order');
                 navigate('/login');
                 return;
+            }
+
+            // If it's a new address, save it to user profile first
+            if (!useSavedAddress && formData.street) {
+                try {
+                    const response = await axios.put(
+                        `${backendUrl}/api/user/profile/update`,
+                        {
+                            userId: userData?._id,
+                            address: formData
+                        },
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${storedToken}`,
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+
+                    if (response.data.success) {
+                        await getUserData(); // Refresh user data with new address
+                    }
+                } catch (error) {
+                    console.error('Error saving address:', error);
+                    toast.error('Failed to save address');
+                    return;
+                }
             }
 
             let orderItems = [];
@@ -285,13 +378,25 @@ const PlaceOrder = () => {
 
             {/* ------------- Right Side ------------------ */}
             <div className='mt-8'>
-
                 <div className='mt-8 min-w-80'>
                     <CartTotal />
                 </div>
 
                 <div className='mt-12'>
                     <Title text1={'PAYMENT'} text2={'METHOD'} />
+                    
+                    {/* Address warning message */}
+                    {!isAddressValid && (
+                        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p className="text-yellow-700 text-sm flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                Please select or add a delivery address before choosing payment method
+                            </p>
+                        </div>
+                    )}
+
                     {/* --------------- Payment Method Selection ------------- */}
                     <div className='space-y-6'>
                         <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
@@ -299,9 +404,10 @@ const PlaceOrder = () => {
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setMethod('stripe')}
+                                onClick={() => handlePaymentMethodSelect('stripe')}
                                 className={`
                                     flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300
+                                    ${!isAddressValid ? 'opacity-50 cursor-not-allowed' : ''}
                                     ${method === 'stripe' 
                                         ? 'border-green-500 bg-green-50 shadow-lg' 
                                         : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
@@ -327,9 +433,10 @@ const PlaceOrder = () => {
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setMethod('razorpay')}
+                                onClick={() => handlePaymentMethodSelect('razorpay')}
                                 className={`
                                     flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300
+                                    ${!isAddressValid ? 'opacity-50 cursor-not-allowed' : ''}
                                     ${method === 'razorpay' 
                                         ? 'border-green-500 bg-green-50 shadow-lg' 
                                         : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
@@ -355,9 +462,10 @@ const PlaceOrder = () => {
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setMethod('cod')}
+                                onClick={() => handlePaymentMethodSelect('cod')}
                                 className={`
                                     flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300
+                                    ${!isAddressValid ? 'opacity-50 cursor-not-allowed' : ''}
                                     ${method === 'cod' 
                                         ? 'border-green-500 bg-green-50 shadow-lg' 
                                         : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
@@ -380,12 +488,64 @@ const PlaceOrder = () => {
                             </motion.div>
                         </div>
 
+                        <div className="space-y-4 mt-8 mb-4">
+                            <div className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="terms"
+                                    checked={acceptTerms}
+                                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                                    className="mt-1.5"
+                                    required
+                                />
+                                <label htmlFor="terms" className="text-sm text-gray-600">
+                                    I accept the{' '}
+                                    <Link to="/terms" target="_blank" className="text-blue-500 hover:underline">
+                                        Terms and Conditions
+                                    </Link>
+                                </label>
+                            </div>
+                            
+                            <div className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="policies"
+                                    checked={acceptPolicies}
+                                    onChange={(e) => setAcceptPolicies(e.target.checked)}
+                                    className="mt-1.5"
+                                    required
+                                />
+                                <label htmlFor="policies" className="text-sm text-gray-600">
+                                    I accept the{' '}
+                                    <Link to="/return" target="_blank" className="text-blue-500 hover:underline">
+                                        Return & Refund
+                                    </Link>,{' '}
+                                    <Link to="/shipping" target="_blank" className="text-blue-500 hover:underline">
+                                        Shipping
+                                    </Link>{' '}
+                                    and{' '}
+                                    <Link to="/exchange" target="_blank" className="text-blue-500 hover:underline">
+                                        Exchange
+                                    </Link>{' '}
+                                    policies
+                                </label>
+                            </div>
+                        </div>
+
                         <div className='w-full flex justify-end mt-8'>
                             <motion.button
                                 type='submit'
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className='bg-black text-white px-16 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-300 flex items-center gap-2 shadow-lg'
+                                disabled={!acceptTerms || !acceptPolicies}
+                                whileHover={{ scale: !acceptTerms || !acceptPolicies ? 1 : 1.02 }}
+                                whileTap={{ scale: !acceptTerms || !acceptPolicies ? 1 : 0.98 }}
+                                className={`
+                                    px-6 py-2 rounded-lg font-medium 
+                                    flex items-center justify-center gap-2 transition-all duration-300
+                                    ${(!acceptTerms || !acceptPolicies)
+                                        ? 'bg-gray-400 cursor-not-allowed opacity-50'
+                                        : 'bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
+                                    }
+                                `}
                             >
                                 <span>Place Order</span>
                                 <motion.span 

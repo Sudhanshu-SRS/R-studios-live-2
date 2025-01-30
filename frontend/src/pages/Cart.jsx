@@ -3,15 +3,16 @@ import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title';
 import { assets } from '../assets/assets';
 import CartTotal from '../components/CartTotal';
+import { toast } from 'react-toastify';
 
 const Cart = () => {
-
   const { products, currency, cartItems, updateQuantity, navigate } = useContext(ShopContext);
-
   const [cartData, setCartData] = useState([]);
 
-  useEffect(() => {
+  // Add new state for cart empty check
+  const isCartEmpty = cartData.length === 0;
 
+  useEffect(() => {
     if (products.length > 0) {
       const tempData = [];
       for (const items in cartItems) {
@@ -21,18 +22,25 @@ const Cart = () => {
               _id: items,
               size: item,
               quantity: cartItems[items][item]
-            })
+            });
           }
         }
       }
       setCartData(tempData);
     }
-  }, [cartItems, products])
+  }, [cartItems, products]);
+
+  const handleCheckout = () => {
+    if (isCartEmpty) {
+      toast.error('Please add items to cart before checkout');
+      return;
+    }
+    navigate('/place-order');
+  };
 
   return (
     <div className='border-t pt-14'>
-
-      <div className=' text-2xl mb-3'>
+      <div className='text-2xl mb-3'>
         <Title text1={'YOUR'} text2={'CART'} />
       </div>
 
@@ -66,14 +74,25 @@ const Cart = () => {
       <div className='flex justify-end my-20'>
         <div className='w-full sm:w-[450px]'>
           <CartTotal />
-          <div className=' w-full text-end'>
-            <button onClick={() => navigate('/place-order')} className='bg-black text-white text-sm my-8 px-8 py-3'>PROCEED TO CHECKOUT</button>
+          <div className='w-full text-end'>
+            <button 
+              onClick={handleCheckout}
+              disabled={isCartEmpty}
+              className={`
+                px-8 py-3 text-sm transition-all duration-300
+                ${isCartEmpty 
+                  ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+                  : 'bg-black text-white hover:bg-gray-800'
+                }
+              `}
+            >
+              {isCartEmpty ? 'CART IS EMPTY' : 'PROCEED TO CHECKOUT'}
+            </button>
           </div>
         </div>
       </div>
-
     </div>
-  )
-}
+  );
+};
 
 export default Cart
