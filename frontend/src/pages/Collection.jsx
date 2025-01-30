@@ -6,8 +6,13 @@ import ProductItem from '../components/ProductItem';
 import { HiFilter } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 
+// Add this to track available products
+const getAvailableProducts = (products) => {
+  return products.filter(product => product.sizes.some(size => size.quantity > 0));
+};
+
 const Collection = () => {
-  const { products, search, showSearch } = useContext(ShopContext);
+  const { products, search, showSearch, refreshAllProducts } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
   const [category, setCategory] = useState([]);
@@ -54,7 +59,8 @@ const Collection = () => {
   // Initial load of products
   useEffect(() => {
     if (products.length > 0) {
-      setFilterProducts(products);
+      const availableProducts = getAvailableProducts(products);
+      setFilterProducts(availableProducts);
       setIsLoading(false);
     }
   }, [products]);
@@ -75,8 +81,7 @@ const Collection = () => {
 
   // Updated filter function
   const applyFilter = () => {
-    let productsCopy = products.slice();
-    // console.log('Initial products:', productsCopy);
+    let productsCopy = getAvailableProducts(products);
 
     if (showSearch && search) {
       productsCopy = productsCopy.filter(item => 
@@ -222,6 +227,19 @@ const sortProduct = () => {
         return [];
     }
   };
+
+  // Add effect to refresh products on page visit
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+        if (!document.hidden) {
+            refreshAllProducts();
+        }
+    };
+
+    refreshAllProducts(); // Initial load
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+}, []);
 
   return (
     <div className='flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t'>

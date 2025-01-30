@@ -16,7 +16,8 @@ const Home = () => {
     showVerifyPopup,
     setShowVerifyPopup,
     handleClosePopup,
-    backendUrl
+    backendUrl,
+    refreshAllProducts
   } = useContext(ShopContext);
 
   const [images, setImages] = useState([]);
@@ -64,6 +65,19 @@ const Home = () => {
 
     fetchImages();
   }, [backendUrl]);
+
+  // Add effect to refresh products on page visit
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshAllProducts();
+      }
+    };
+
+    refreshAllProducts(); // Initial load
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   return (
     <motion.div

@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import PopupVerify  from "../components/PopupVerify";
-export const ShopContext = createContext();
+export const ShopContext = createContext(null);
 
 const ShopContextProvider = (props) => {
     const currency = "₹";
@@ -257,6 +257,66 @@ const ShopContextProvider = (props) => {
         
         return () => clearTimeout(popupTimer);
       }, [userData, showVerifyPopup]);
+    
+    const placeOrder = async (orderData) => {
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/order/place`,
+                orderData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                setCartItems({});
+                // Immediately refresh products after order
+                await refreshAllProducts();
+                return response;
+            }
+        } catch (error) {
+            console.error('Order placement error:', error);
+            throw error;
+        }
+    };
+
+    // Add refresh stock function
+    const refreshStock = async (productId) => {
+        try {
+            const response = await axios.get(`${backendUrl}/api/product/single`, {
+                params: { productId },
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (response.data.success) {
+                setProducts(prev => prev.map(p => 
+                    p._id === productId ? response.data.product : p
+                ));
+                return response.data.product;
+            }
+        } catch (error) {
+            console.error('Error refreshing stock:', error);
+        }
+    };
+
+    // Add function to refresh all products
+    const refreshAllProducts = async () => {
+        try {
+            const response = await axios.get(`${backendUrl}/api/product/list`);
+            if (response.data.success) {
+                // Update products and ensure they're sorted by date
+                const updatedProducts = response.data.products
+                    .sort((a, b) => b.date - a.date);
+                setProducts(updatedProducts);
+            }
+        } catch (error) {
+            console.error('Error refreshing products:', error);
+        }
+    };
+
     const value = {
         products,
         currency,
@@ -280,7 +340,11 @@ const ShopContextProvider = (props) => {
         setUserData,
         isVerified,
         showVerifyPopup,
-        setShowVerifyPopup,handleVerifyPopup
+        setShowVerifyPopup,
+        handleVerifyPopup,
+        placeOrder,
+        refreshStock,
+        refreshAllProducts
     };
 
     return (

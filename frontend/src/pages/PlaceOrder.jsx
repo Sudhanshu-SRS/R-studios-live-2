@@ -105,19 +105,19 @@ const PlaceOrder = () => {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID,
             amount: order.amount,
             currency: order.currency,
-            name: 'Order Payment',
+            name: 'R-Studio Order',
             description: 'Order Payment',
             order_id: order.id,
             receipt: order.receipt,
-            handler: async (response) => {
-                // console.log('Razorpay Response:', response);
+            handler: async function (response) {
                 try {
                     const verifyResponse = await axios.post(
                         `${backendUrl}/api/order/verifyRazorpay`,
                         {
-                            ...response,
-                            userId: userData?._id,
-                            orderId: response.razorpay_order_id
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                            userId: userData?._id
                         },
                         {
                             headers: {
@@ -137,17 +137,18 @@ const PlaceOrder = () => {
                         navigate('/cart');
                     }
                 } catch (error) {
-                    // console.error('Payment verification error:', error);
-                    if (error?.response?.status === 401) {
-                        localStorage.removeItem('token');
-                        setToken(null);
-                        toast.error('Session expired. Please login again');
-                        navigate('/login');
-                    } else {
-                        toast.error('Payment verification failed');
-                        navigate('/cart');
-                    }
+                    console.error('Payment verification error:', error);
+                    toast.error(error?.response?.data?.message || 'Payment verification failed');
+                    navigate('/cart');
                 }
+            },
+            prefill: {
+                name: `${userData?.firstName} ${userData?.lastName}`,
+                email: userData?.email,
+                contact: userData?.phone
+            },
+            theme: {
+                color: '#00BFAE'
             }
         };
 

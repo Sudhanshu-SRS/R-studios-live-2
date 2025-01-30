@@ -8,7 +8,13 @@ const LatestCollection = () => {
   const [latestProducts, setLatestProducts] = useState([]);
 
   useEffect(() => {
-    setLatestProducts(products.slice(0, 10));
+    // Filter out out-of-stock products and get latest 10
+    const availableProducts = products
+      .filter(product => product.sizes.some(size => size.quantity > 0))
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 10);
+
+    setLatestProducts(availableProducts);
   }, [products]);
 
   return (
@@ -20,7 +26,6 @@ const LatestCollection = () => {
         </p>
       </div>
 
-      {/* Rendering Products */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6">
         {latestProducts.map((item) => (
           <ProductItem
@@ -30,7 +35,7 @@ const LatestCollection = () => {
             name={item.name}
             price={item.price}
             sizes={item.sizes}
-            discount={item.discount} // Add this line
+            discount={item.discount}
           />
         ))}
       </div>

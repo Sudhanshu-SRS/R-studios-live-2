@@ -152,12 +152,72 @@ const updateProductSalesData = async (item) => {
     );
 };
 
+// Add this function to update stock when order is placed
+const updateProductStock = async (items) => {
+    try {
+        for (const item of items) {
+            // Use atomic update operation
+            const result = await productModel.findOneAndUpdate(
+                { 
+                    _id: item._id,
+                    'sizes.size': item.size 
+                },
+                {
+                    $inc: { 
+                        'sizes.$.quantity': -item.quantity,
+                    }
+                },
+                { new: true }
+            );
+
+            if (result) {
+                // Update inStock status
+                const hasStock = result.sizes.some(s => s.quantity > 0);
+                await productModel.findByIdAndUpdate(
+                    item._id,
+                    { 
+                        inStock: hasStock,
+                        $inc: {
+                            'salesData.totalSold': item.quantity,
+                            'salesData.revenue': item.price * item.quantity
+                        },
+                        $set: {
+                            'salesData.lastUpdated': new Date()
+                        }
+                    }
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Stock update error:', error);
+        throw error;
+    }
+};
+
+const validateStock = async (items) => {
+    for (const item of items) {
+        const product = await productModel.findById(item._id);
+        if (!product) {
+            throw new Error(`Product ${item._id} not found`);
+        }
+
+        const sizeData = product.sizes.find(s => s.size === item.size);
+        if (!sizeData || sizeData.quantity < item.quantity) {
+            throw new Error(`Insufficient stock for ${product.name} (${item.size})`);
+        }
+    }
+    return true;
+};
+
 // Placing orders using COD Method
 const placeOrder = async (req, res) => {
     try {
         const { userId, items, amount, address } = req.body;
 
-        // Create order first
+        // First update stock
+        await updateProductStock(items);
+
+        // Then create order
         const orderData = {
             userId,
             items,
@@ -171,27 +231,35 @@ const placeOrder = async (req, res) => {
         const newOrder = new orderModel(orderData);
         await newOrder.save();
 
-        // Update product sales and stock
-        for (const item of items) {
-            await updateProductSalesData(item);
-        }
-
         // Clear cart
         await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
-        res.json({ success: true, message: "Order Placed Successfully" });
+        // Fetch updated products
+        const updatedProducts = await productModel.find({
+            _id: { $in: items.map(item => item._id) }
+        });
+
+        res.json({ 
+            success: true, 
+            message: "Order Placed Successfully",
+            updatedProducts 
+        });
 
     } catch (error) {
         console.error('Order placement error:', error);
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
 // Placing orders using Stripe Method
 const placeOrderStripe = async (req,res) => {
     try {
+        const { items } = req.body;
         
-        const { userId, items, amount, address} = req.body
+        // Validate stock before creating session
+        await validateStock(items);
+        
+        const { userId, amount, address} = req.body
         const { origin } = req.headers;
 
         const orderData = {
@@ -239,37 +307,55 @@ const placeOrderStripe = async (req,res) => {
         res.json({success:true,session_url:session.url});
 
     } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
+        console.error('Stripe order error:', error);
+        res.status(400).json({ success: false, message: error.message });
     }
 }
 
 // Verify Stripe 
-const verifyStripe = async (req,res) => {
-
-    const { orderId, success, userId } = req.body
+const verifyStripe = async (req, res) => {
+    const { orderId, success } = req.body;
 
     try {
         if (success === "true") {
-            await orderModel.findByIdAndUpdate(orderId, {payment:true});
-            await userModel.findByIdAndUpdate(userId, {cartData: {}})
-            res.json({success: true});
-        } else {
-            await orderModel.findByIdAndDelete(orderId)
-            res.json({success:false})
-        }
-        
-    } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
-    }
+            const order = await orderModel.findById(orderId);
+            if (!order) {
+                return res.status(404).json({ success: false, message: 'Order not found' });
+            }
 
-}
+            // Update order status
+            order.payment = true;
+            await order.save();
+
+            // Update product stock
+            await updateProductStock(order.items);
+
+            // Clear user's cart
+            await userModel.findByIdAndUpdate(order.userId, { cartData: {} });
+
+            // Send confirmation emails
+            await sendOrderEmails(order, order.items);
+
+            res.json({ success: true });
+        } else {
+            await orderModel.findByIdAndDelete(orderId);
+            res.json({ success: false });
+        }
+    } catch (error) {
+        console.error('Stripe verification error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 // Placing orders using Razorpay Method
 const placeOrderRazorpay = async (req, res) => {
     try {
-        const { userId, items, amount, address } = req.body;
+        const { items } = req.body;
+        
+        // Validate stock before creating order
+        await validateStock(items);
+        
+        const { userId, amount, address } = req.body;
 
         const orderData = {
             userId,
@@ -299,39 +385,46 @@ const placeOrderRazorpay = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error('Razorpay order error:', error);
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
 // Verify Razorpay payment and send emails
 const verifyRazorpay = async (req, res) => {
     try {
-        const { userId, razorpay_order_id, razorpay_payment_id } = req.body;
+        const { razorpay_order_id, razorpay_payment_id } = req.body;
 
         const orderInfo = await razorpayInstance.orders.fetch(razorpay_order_id);
         
         if (orderInfo.status === 'paid') {
             const order = await orderModel.findByIdAndUpdate(
                 orderInfo.receipt, 
-                { payment: true },
+                { 
+                    payment: true,
+                    transactionId: razorpay_payment_id // Store the payment ID
+                },
                 { new: true }
-            ).exec();
+            );
 
-            // Update product quantities and sales data
-            for (const item of order.items) {
-                await updateProductSalesData(item);
-            }
+            // Update product stock
+            await updateProductStock(order.items);
 
             // Clear cart
-            await userModel.findByIdAndUpdate(userId, { cartData: {} });
+            await userModel.findByIdAndUpdate(order.userId, { cartData: {} });
 
-            // Send confirmation emails
+            // Send confirmation emails with transaction ID
             await sendOrderEmails(order, order.items, razorpay_payment_id);
+
+            // Get updated products for frontend
+            const updatedProducts = await productModel.find({
+                _id: { $in: order.items.map(item => item._id) }
+            });
 
             res.json({ 
                 success: true, 
-                message: "Payment Successful" 
+                message: "Payment Successful",
+                updatedProducts
             });
         } else {
             res.json({ 
@@ -343,7 +436,7 @@ const verifyRazorpay = async (req, res) => {
         console.error('Razorpay verification error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Payment verification failed'
         });
     }
 };
@@ -393,4 +486,4 @@ const updateStatus = async (req,res) => {
     }
 }
 
-export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus}
+export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus,updateProductStock,}

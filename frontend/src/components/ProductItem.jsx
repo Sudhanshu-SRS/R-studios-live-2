@@ -16,10 +16,37 @@ const ProductItem = ({
     onSizeError ,
     isDisabled = false
 }) => {
-    const { currency, addToCart, navigate, cartItems } = useContext(ShopContext);
+    const { currency, addToCart, navigate, cartItems, updateProductStock, refreshStock } = useContext(ShopContext);
     const [selectedSize, setSelectedSize] = useState(defaultSize);
     const [localSizes, setLocalSizes] = useState([]);
     const [quantityLeft, setQuantityLeft] = useState(0);
+
+    // Add a function to refresh stock data
+    const updateLocalStock = async () => {
+        try {
+            const updatedProduct = await refreshStock(id);
+            if (updatedProduct) {
+                setLocalSizes(updatedProduct.sizes.map(size => ({
+                    ...size,
+                    quantity: Math.max(0, size.quantity - (cartItems[id]?.[size.size] || 0))
+                })));
+            }
+        } catch (error) {
+            console.error('Error refreshing stock:', error);
+        }
+    };
+
+    // Add effect to refresh stock on mount and revisit
+    useEffect(() => {
+        updateLocalStock();
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                updateLocalStock();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [id, cartItems]);
 
     // Update local sizes when props or cart changes
     useEffect(() => {
@@ -32,10 +59,36 @@ const ProductItem = ({
 
             if (selectedSize) {
                 const sizeData = updatedSizes.find(s => s.size === selectedSize);
+                if (!sizeData || sizeData.quantity === 0) {
+                    setSelectedSize(null);
+                }
                 setQuantityLeft(sizeData?.quantity || 0);
+            }
+
+            // Check if product is out of stock
+            const isOutOfStock = !updatedSizes.some(s => s.quantity > 0);
+            if (isOutOfStock && onSizeError) {
+                onSizeError();
             }
         }
     }, [sizes, cartItems, id, selectedSize]);
+
+    // Listen for stock updates
+    useEffect(() => {
+        const handleStockUpdate = (e) => {
+            if (e.detail.productId === id) {
+                setLocalSizes(prev => prev.map(size => ({
+                    ...size,
+                    quantity: size.size === e.detail.size ? 
+                        Math.max(0, size.quantity - e.detail.quantity) : 
+                        size.quantity
+                })));
+            }
+        };
+
+        window.addEventListener('stockUpdate', handleStockUpdate);
+        return () => window.removeEventListener('stockUpdate', handleStockUpdate);
+    }, [id]);
 
     const isOutOfStock = !localSizes?.some(size => size.quantity > 0);
 
