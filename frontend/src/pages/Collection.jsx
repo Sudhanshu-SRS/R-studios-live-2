@@ -6,11 +6,6 @@ import ProductItem from '../components/ProductItem';
 import { HiFilter } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 
-// Add this to track available products
-const getAvailableProducts = (products) => {
-  return products.filter(product => product.sizes.some(size => size.quantity > 0));
-};
-
 const Collection = () => {
   const { products, search, showSearch, refreshAllProducts } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
@@ -56,11 +51,10 @@ const Collection = () => {
     }
   };
 
-  // Initial load of products
+  // Initial load of products - show all products
   useEffect(() => {
     if (products.length > 0) {
-      const availableProducts = getAvailableProducts(products);
-      setFilterProducts(availableProducts);
+      setFilterProducts(products); // Show all products without filtering by stock
       setIsLoading(false);
     }
   }, [products]);
@@ -81,7 +75,7 @@ const Collection = () => {
 
   // Updated filter function
   const applyFilter = () => {
-    let productsCopy = getAvailableProducts(products);
+    let productsCopy = [...products]; // Use all products
 
     if (showSearch && search) {
       productsCopy = productsCopy.filter(item => 
@@ -347,6 +341,8 @@ const sortProduct = () => {
                     image={item.image}
                     sizes={item.sizes}
                     discount={item.discount} // Add this line
+                    isDisabled={!item.sizes.some(size => size.quantity > 0)}
+                    showSizeUI={true} // Show size UI for all products
                   />
                 ))
               }
