@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 const PlaceOrder = () => {
     const [method, setMethod] = useState('cod');
     const [useSavedAddress, setUseSavedAddress] = useState(true);
-    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, userData } = useContext(ShopContext);
+    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, userData,getUserData } = useContext(ShopContext);
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',

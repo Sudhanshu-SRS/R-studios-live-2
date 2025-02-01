@@ -13,6 +13,7 @@ const Login = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   // Add error state variables
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -69,6 +70,12 @@ const Login = () => {
       setPasswordError("Password must be at least 6 characters long and contain both letters and numbers.");
       return;
     }
+     // Validate phone number format
+     if (currentState === "Sign Up" && !phone.match(/^[0-9]{10}$/)) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
+    }
+
 
     try {
       let response;
@@ -77,6 +84,7 @@ const Login = () => {
           name,
           email,
           password,
+          phone,
         });
         
         if (response.data.success) {
@@ -91,6 +99,7 @@ const Login = () => {
             // Clear the name field but keep the email
             setName("");
             setPassword("");
+            setPhone("");
           } else {
             toast.error(response.data.message);
           }
@@ -224,6 +233,26 @@ const Login = () => {
                 )}
               </div>
             </motion.div>
+            {currentState === "Sign Up" && (
+  <motion.div 
+    variants={inputVariants}
+    initial="hidden"
+    animate="visible"
+    className="relative"
+  >
+    <label className="block text-sm font-medium text-gray-700">Phone</label>
+    <div className="mt-1">
+      <input
+        type="tel"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        required
+        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+        placeholder="Enter your phone number"
+      />
+    </div>
+  </motion.div>
+)}
 
             {/* Password field */}
             <motion.div 
