@@ -339,112 +339,130 @@ const Discounts = ({ token }) => {
           </div>
         </div>
 
-        {/* Add New Discount Form */}
-        <form 
-          id="discount-form" // Add this ID for scrolling
-          onSubmit={handleDiscountSubmit} 
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 mt-12 p-6 bg-white rounded-lg shadow-md"
-        >
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Select Product</label>
-            <select
-              value={newDiscount.productId}
-              onChange={(e) => setNewDiscount(prev => ({ ...prev, productId: e.target.value }))}
-              className="w-full p-2 border rounded-lg"
-              required
-            >
-              <option value="">Choose a product</option>
-              {products.map(product => (
-                <option key={product._id} value={product._id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Discount Type</label>
-            <select
-              value={newDiscount.discountType}
-              onChange={(e) => setNewDiscount(prev => ({ ...prev, discountType: e.target.value }))}
-              className="w-full p-2 border rounded-lg"
-            >
-              <option value="percentage">Percentage (%)</option>
-              <option value="fixed">Fixed Amount (₹)</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Discount Value</label>
-            <input
-              type="number"
-              value={newDiscount.discountValue}
-              onChange={(e) => setNewDiscount(prev => ({ ...prev, discountValue: e.target.value }))}
-              className="w-full p-2 border rounded-lg"
-              placeholder={newDiscount.discountType === 'percentage' ? 'Enter percentage' : 'Enter amount'}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Valid Till</label>
-            <input
-              type="date"
-              value={newDiscount.endDate}
-              onChange={(e) => setNewDiscount(prev => ({ ...prev, endDate: e.target.value }))}
-              className="w-full p-2 border rounded-lg"
-              min={new Date().toISOString().split('T')[0]}
-              required
-            />
-          </div>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+        <div className="space-y-8">
+          {/* Discount Form */}
+          <motion.form 
+            id="discount-form"
+            onSubmit={handleDiscountSubmit}
+            className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
           >
-            <HiPlus /> Add Discount
-          </motion.button>
-        </form>
+            {/* Form Header */}
+            <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-b">
+              <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <HiTag className="w-6 h-6 text-blue-500" />
+                Create New Discount
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">Set up a new discount for your products</p>
+            </div>
 
-        {/* Current Discounts List */}
-        <div className="mt-8">
-          <h3 className="text-xl font-semibold mb-4">Active Discounts</h3>
-          <div className="grid gap-4">
-            {discountedProducts.map(item => (
-              <motion.div
-                key={item._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gray-50 p-4 rounded-lg flex items-center justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <img
-                    src={item.image[0]}
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded-lg"
-                  />
-                  <div>
-                    <h4 className="font-medium">{item.name}</h4>
-                    <p className="text-sm text-gray-600">
-                      {item.discountType === 'percentage' ? `${item.discountValue}% off` : `₹${item.discountValue} off`}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Valid till: {new Date(item.endDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => removeDiscount(item._id)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+            {/* Form Fields */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Discount Type</label>
+                <select
+                  value={newDiscount.discountType}
+                  onChange={(e) => setNewDiscount(prev => ({ ...prev, discountType: e.target.value }))}
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all hover:border-blue-500"
                 >
-                  <HiTrash className="w-5 h-5" />
-                </motion.button>
-              </motion.div>
-            ))}
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount (₹)</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Discount Value</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={newDiscount.discountValue}
+                    onChange={(e) => setNewDiscount(prev => ({ ...prev, discountValue: e.target.value }))}
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all hover:border-blue-500 pr-12"
+                    placeholder="Enter value"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                    {newDiscount.discountType === 'percentage' ? '%' : '₹'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Valid Till</label>
+                <input
+                  type="date"
+                  value={newDiscount.endDate}
+                  onChange={(e) => setNewDiscount(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all hover:border-blue-500"
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                className="w-full md:self-end h-12 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium"
+              >
+                <HiPlus className="w-5 h-5" /> 
+                Create Discount
+              </motion.button>
+            </div>
+          </motion.form>
+
+          {/* Active Discounts List */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              Active Discounts
+            </h3>
+            
+            <div className="grid gap-4">
+              {discountedProducts.map(item => (
+                <motion.div
+                  key={item._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all p-4 border border-gray-100"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden group">
+                        <motion.img
+                          src={item.image[0]}
+                          alt={item.name}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                          whileHover={{ scale: 1.1 }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-800">{item.name}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                            {item.discountType === 'percentage' ? `${item.discountValue}% off` : `₹${item.discountValue} off`}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            Expires: {new Date(item.endDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => removeDiscount(item._id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                    >
+                      <HiTrash className="w-5 h-5" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -457,11 +475,17 @@ const Discounts = ({ token }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5 }}
             onClick={scrollToTop}
-            className="fixed bottom-8 right-8 p-3 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 transition-colors z-50"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            className="fixed bottom-8 right-8 p-3 rounded-xl bg-white/80 backdrop-blur-sm 
+                       border border-blue-200 text-blue-600 shadow-lg hover:shadow-2xl 
+                       hover:bg-blue-50 transition-all duration-300 group z-50 
+                       flex items-center gap-2"
+            whileHover={{ y: -5 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <HiArrowUp className="w-6 h-6" />
+            <span className="text-sm font-medium hidden group-hover:inline">
+              Back to Top
+            </span>
+            <HiArrowUp className="w-5 h-5 animate-bounce" />
           </motion.button>
         )}
       </AnimatePresence>

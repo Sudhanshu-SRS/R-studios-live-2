@@ -3,78 +3,125 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
 import transporter from "../config/nodemailer.js";
-
+import whatsAppService from "../services/whatsappService.js";
+import axios from 'axios';
 const createToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
+// Get location data from pincode
+const getPincodeDetails = async (req, res) => {
+  try {
+    const { pincode } = req.params;
+    
+    // Validate pincode format
+    if (!pincode.match(/^[1-9][0-9]{5}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid pincode format'
+      });
+    }
+
+    // Make request to India Post API
+    const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
+    
+    if (response.data[0]?.Status === "Success") {
+      res.json(response.data);
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No location found for this pincode'
+      });
+    }
+  } catch (error) {
+    console.error('Pincode fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch location data',
+      error: error.message
+    });
+  }
+};
 // Get user profile
 const getUserProfile = async (req, res) => {
   try {
-      const { userId } = req.body;
-      const user = await userModel.findById(userId).select('-password');
-      
-      if (!user) {
-          return res.status(404).json({ 
-              success: false, 
-              message: 'User not found' 
-          });
-      }
+    const { userId } = req.body;
+    const user = await userModel.findById(userId).select("-password");
 
-      res.json({ 
-          success: true, 
-          user: {
-              name: user.name,
-              email: user.email,
-              phone: user.phone || '',
-              isAccountVerified: user.isAccountVerified,
-              address: user.address || {
-                  street: '',
-                  city: '',
-                  state: '',
-                  zipcode: '',
-                  country: ''
-              }
-          }
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        isAccountVerified: user.isAccountVerified,
+        address: user.address || {
+          street: "",
+          city: "",
+          state: "",
+          zipcode: "",
+          country: "",
+        },
+      },
+    });
   } catch (error) {
-      console.error('Error fetching user profile:', error);
-      res.status(500).json({ 
-          success: false, 
-          message: 'Server error' 
-      });
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 // Update user profile
 const updateUserProfile = async (req, res) => {
-    try {
-        const { userId, address } = req.body;
-        
-        const updatedUser = await userModel.findByIdAndUpdate(
-            userId,
-            { address },
-            { new: true }
-        ).select('-password');
+  try {
+    const { userId, phone, address } = req.body;
 
-        if (!updatedUser) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Profile updated successfully',
-            user: updatedUser
-        });
-    } catch (error) {
-        console.error('Error updating profile:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+    // Validate phone number
+    if (phone && !phone.match(/^[0-9]{10}$/)) {
+      return res.status(400).json({ success: false, message: 'Invalid phone number' });
     }
+
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Check if phone number is being added
+    const isNewPhoneNumber = !user.phone && phone;
+
+    user.phone = phone || user.phone;
+    user.address = address || user.address;
+
+    const updatedUser = await user.save();
+
+    // Send WhatsApp welcome message if phone number is added
+    if (isNewPhoneNumber) {
+      try {
+        await whatsAppService.sendMessage(
+          phone,
+          "welcome_msg", // template name
+          [user.name, user.email] // parameters array
+        );
+        console.log("WhatsApp welcome message sent successfully");
+      } catch (error) {
+        console.error("Failed to send WhatsApp welcome message:", error);
+      }
+    }
+
+    res.json({ success: true, user: updatedUser });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
 };
 
 // Route for user login
@@ -116,11 +163,10 @@ const loginUser = async (req, res) => {
   }
 };
 
-
 // Route for user register
 const registerUser = async (req, res) => {
   const { name, phone, email, password } = req.body;
-  if (!name || !email || !password) {
+  if (!name || !email || !password || !phone) {
     return res.json({ success: false, message: "All fields are required" });
   }
   try {
@@ -150,7 +196,7 @@ const registerUser = async (req, res) => {
 
     const newUser = new userModel({
       name,
-      // phone,
+      phone,
       email,
       password: hashedPassword,
     });
@@ -198,9 +244,37 @@ const registerUser = async (req, res) => {
         </html>
       `,
     };
-    
 
     await transporter.sendMail(mailOptions);
+    // Send WhatsApp welcome message if phone number exists
+    if (phone) {
+      try {
+        console.log("Registration WhatsApp Debug:", {
+          rawPhone: phone,
+          name,
+          email
+        });
+        
+        const formattedPhone = phone.toString().replace(/\D/g, "");
+        if (formattedPhone.length < 10) {
+          console.error("Invalid phone length:", formattedPhone.length);
+          return;
+        }
+    
+        const result = await whatsAppService.sendMessage(
+          formattedPhone,
+         "welcome_msg", // template name
+  [name, email]  
+        );
+        
+        console.log("Welcome Message Result:", result);
+      } catch (error) {
+        console.error("Welcome Message Error:", {
+          error: error.message,
+          response: error.response?.data
+        });
+      }
+    }
 
     res.json({ success: true, token });
   } catch (error) {
@@ -225,58 +299,58 @@ const logout = async (req, res) => {
 
 //send Verification Otp Message
 const sendverifyOtp = async (req, res) => {
-    try {
-        const { userId } = req.body;
-        console.log(`Received request to send OTP for user ID: ${userId}`);
+  try {
+    const { userId } = req.body;
+    console.log(`Received request to send OTP for user ID: ${userId}`);
 
-        const user = await userModel.findById(userId);
-        if (!user) {
-            console.log(`User not found with ID: ${userId}`);
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
-            });
-        }
+    const user = await userModel.findById(userId);
+    if (!user) {
+      console.log(`User not found with ID: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
-        // Check if user is already verified
-        if (user.isAccountVerified) {
-            return res.status(400).json({
-                success: false,
-                message: "Account is already verified"
-            });
-        }
+    // Check if user is already verified
+    if (user.isAccountVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Account is already verified",
+      });
+    }
 
-        // Rate limiting: Check OTP requests per day
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+    // Rate limiting: Check OTP requests per day
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-        if (user.lastOtpRequestAt && user.lastOtpRequestAt >= todayStart) {
-            if (user.otpRequestCount >= 3) {
-                return res.status(429).json({
-                    success: false,
-                    message: "Maximum OTP requests reached for today"
-                });
-            }
-        } else {
-            // Reset counter for new day
-            user.otpRequestCount = 0;
-        }
+    if (user.lastOtpRequestAt && user.lastOtpRequestAt >= todayStart) {
+      if (user.otpRequestCount >= 3) {
+        return res.status(429).json({
+          success: false,
+          message: "Maximum OTP requests reached for today",
+        });
+      }
+    } else {
+      // Reset counter for new day
+      user.otpRequestCount = 0;
+    }
 
-        // Generate new OTP
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
-        user.verifyotp = otp;
-        user.verifyotpExpireAt = Date.now() + (15 * 60 * 1000); // 15 minutes
-        user.otpRequestCount += 1;
-        user.lastOtpRequestAt = new Date();
+    // Generate new OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.verifyotp = otp;
+    user.verifyotpExpireAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+    user.otpRequestCount += 1;
+    user.lastOtpRequestAt = new Date();
 
-        await user.save();
-
-        // Send OTP via email
-        const mailOptions = {
-          from: process.env.SENDER_EMAIL,
-          to: user.email,
-          subject: "🔑 R-Studio Email Verification OTP",
-          html: `
+    await user.save();
+    
+    // Send OTP via email
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: "🔑 R-Studio Email Verification OTP",
+      html: `
             <html>
               <head>
                 <style>
@@ -367,47 +441,97 @@ const sendverifyOtp = async (req, res) => {
                 </div>
               </body>
             </html>
-          `
-        };
-        
+          `,
+    };
 
-        await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
+  
+    // Send WhatsApp OTP if phone exists
+if (user.phone) {
+  try {
+      // Add debug logs
+      console.log('WhatsApp OTP Debug:', {
+          hasPhone: !!user.phone,
+          phoneValue: user.phone,
+          userName: user.name,
+          hasWhatsAppService: !!whatsAppService
+      });
 
-        return res.json({
-            success: true,
-            message: "New verification OTP sent successfully",
-            verifyotpExpireAt: user.verifyotpExpireAt,
-            remainingAttempts: 3 - user.otpRequestCount
-        });
+      const formattedPhone = user.phone.toString().replace(/\D/g, "");
+     
+      console.log('Formatted phone for WhatsApp:', formattedPhone);
 
-    } catch (error) {
-        console.error('Error sending verification OTP:', error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to send verification OTP"
-        });
-    }
+      // Check if phone is properly formatted
+      if (!formattedPhone || formattedPhone.length < 10) {
+          console.error('Invalid phone number format');
+          return;
+      }
+
+      // Verify whatsAppService is available
+      if (!whatsAppService) {
+          console.error('WhatsApp service not initialized');
+          return;
+      }
+
+      // Use sendTemplateMessage instead of sendVerificationCode
+      const result = await whatsAppService.sendVerifyOtp(
+        formattedPhone,
+        'otp_alert',
+        [
+            {
+                type: "text",
+                text: otp.toString()
+            }
+        ]
+    );
+
+      console.log('WhatsApp OTP Response:', {
+          success: result,
+          phone: formattedPhone,
+          template: 'otp_alert'
+      });
+
+  } catch (error) {
+      console.error('WhatsApp OTP Error:', {
+          message: error.message,
+          response: error.response?.data,
+          stack: error.stack
+      });
+  }
+} else {
+  console.log('No phone number found for user:', user._id);
+}
+    return res.json({
+      success: true,
+      message: "New verification OTP sent successfully",
+      verifyotpExpireAt: user.verifyotpExpireAt,
+      remainingAttempts: 3 - user.otpRequestCount,
+    });
+  } catch (error) {
+    console.error("Error sending verification OTP:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send verification OTP",
+    });
+  }
 };
-
-
-
 
 //Verify Email
 const verifyEmail = async (req, res) => {
   const { userId, otp } = req.body;
   if (!otp || !userId) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "OTP and userId are required" 
+    return res.status(400).json({
+      success: false,
+      message: "OTP and userId are required",
     });
   }
-  
+
   try {
     const user = await userModel.findById(userId);
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
@@ -418,17 +542,17 @@ const verifyEmail = async (req, res) => {
     
     // Ensure the expiration comparison is done correctly
     if (String(user.verifyotp) !== String(otp)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid OTP" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
       });
     }
 
     if (user.verifyotpExpireAt < Date.now()) {
-      console.log('OTP has expired at:', user.verifyotpExpireAt);
-      return res.status(400).json({ 
-        success: false, 
-        message: "OTP has expired" 
+      console.log("OTP has expired at:", user.verifyotpExpireAt);
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired",
       });
     }
 
@@ -440,20 +564,20 @@ const verifyEmail = async (req, res) => {
 
     // console.log('User verification status updated:', user.isAccountVerified);
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: "Email verified successfully",
       user: {
         isAccountVerified: user.isAccountVerified,
         email: user.email,
-        name: user.name
-      }
+        name: user.name,
+      },
     });
   } catch (error) {
-    console.error('Email verification error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Server error during verification" 
+    console.error("Email verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error during verification",
     });
   }
 };
@@ -496,7 +620,9 @@ const sendResetOtp = async (req, res) => {
     
               <img src="https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif" alt="Password Reset" style="width: 100%; max-width: 250px; border-radius: 10px; margin: 20px auto;" />
     
-              <p style="font-size: 16px; line-height: 1.8;">Hello <strong>${user.name || "User"}</strong>,</p>
+              <p style="font-size: 16px; line-height: 1.8;">Hello <strong>${
+                user.name || "User"
+              }</strong>,</p>
               <p style="font-size: 16px;">We received a request to reset your R-Studio account password. Please use the OTP below to reset it.</p>
     
               <div style="display: inline-block; padding: 10px 20px; background-color: #00bcd4; color: white; font-size: 22px; font-weight: bold; letter-spacing: 4px; border-radius: 5px; margin: 20px 0;">
@@ -519,6 +645,41 @@ const sendResetOtp = async (req, res) => {
     };
     
     await transporter.sendMail(mailOptions);
+      // Send WhatsApp OTP if phone exists
+      if (user.phone) {
+        try {
+          const formattedPhone = user.phone.toString().replace(/\D/g, "");
+          
+          if (!formattedPhone || formattedPhone.length < 10) {
+            console.error('Invalid phone number format');
+            return;
+          }
+  
+          // Use reset_otp template
+          const result = await whatsAppService.sendVerifyOtp(
+            formattedPhone,
+            'reset_otp', // New template name for password reset
+            [
+              {
+                type: "text",
+                text: otp.toString()
+              }
+            ]
+          );
+  
+          console.log('WhatsApp Reset OTP Response:', {
+            success: result,
+            phone: formattedPhone,
+            template: 'reset_otp'
+          });
+  
+        } catch (error) {
+          console.error('WhatsApp Reset OTP Error:', {
+            message: error.message,
+            response: error.response?.data
+          });
+        }
+      }
     res.json({
       success: true,
       message: "Password Reset Otp Sent Successfully",
@@ -581,27 +742,27 @@ const adminLogin = async (req, res) => {
 };
 const googleAuth = async (req, res) => {
   try {
-      const { email, name, googleId } = req.body;
+    const { email, name, googleId } = req.body;
 
-      // Check if user exists
-      let user = await userModel.findOne({ email });
-      let isNewUser = false;
-      if (!user) {
-          // Create new user if doesn't exist
-          user = new userModel({
-              name,
-              email,
-              password: googleId, // You might want to handle this differently
-              isAccountVerified: true // Google accounts are already verified
-          });
-          await user.save();
-          isNewUser = true;
-           // Send welcome email
-           const mailOptions = {
-            from: process.env.SENDER_EMAIL,
-            to: email,
-            subject: "🎉 Welcome to R-Studio!",
-            html: `
+    // Check if user exists
+    let user = await userModel.findOne({ email });
+    let isNewUser = false;
+    if (!user) {
+      // Create new user if doesn't exist
+      user = new userModel({
+        name,
+        email,
+        password: googleId, // You might want to handle this differently
+        isAccountVerified: true, // Google accounts are already verified
+      });
+      await user.save();
+      isNewUser = true;
+      // Send welcome email
+      const mailOptions = {
+        from: process.env.SENDER_EMAIL,
+        to: email,
+        subject: "🎉 Welcome to R-Studio!",
+        html: `
               <div style="font-family: 'Arial', sans-serif; color: #333; background-color: #f9f9f9; padding: 40px;">
                 <div style="max-width: 600px; margin: auto; background-color: white; border-radius: 10px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); padding: 40px; animation: fadeIn 1.5s ease-in-out;">
                   
@@ -652,34 +813,33 @@ const googleAuth = async (req, res) => {
                   }
                 }
               </style>
-            `
-          };
-          
+            `,
+      };
 
-        await transporter.sendMail(mailOptions);
-      }
+      await transporter.sendMail(mailOptions);
+    }
 
-      // Create JWT token
-      const token = createToken(user._id);
+    // Create JWT token
+    const token = createToken(user._id);
 
-      res.cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
-      res.json({
-          success: true,
-          token,
-          message: "Google authentication successful"
-      });
+    res.json({
+      success: true,
+      token,
+      message: "Google authentication successful",
+    });
   } catch (error) {
-      console.error('Google auth error:', error);
-      res.status(500).json({
-          success: false,
-          message: error.message
-      });
+    console.error("Google auth error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -696,5 +856,6 @@ export {
   resetPassword,
   getUserProfile,
   updateUserProfile,
-  
+  getPincodeDetails,
+ 
 };

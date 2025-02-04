@@ -10,6 +10,11 @@ const userSchema = new mongoose.Schema(
     isAccountVerified: { type: Boolean, default: false },
     resetOtp: { type: String, default: '' },
     resetOtpExpireAt: { type: Number, default: 0 }, // Expiration time for reset OTP
+    phone: {
+      type: String,
+      required: false, // Optional
+      trim: true
+  },
 
     // New fields for OTP request tracking
     otpRequestCount: { type: Number, default: 0 }, // Counter for OTP requests per day
@@ -20,6 +25,8 @@ const userSchema = new mongoose.Schema(
         firstName: { type: String },
         lastName: { type: String },
         street: { type: String },
+        addressLine2: { type: String }, // Add this
+        landmark: { type: String },     
         city: { type: String },
         state: { type: String },
         zipcode: { type: String },

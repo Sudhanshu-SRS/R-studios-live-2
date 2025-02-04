@@ -18,6 +18,7 @@ const orderSchema = new mongoose.Schema({
     paymentMethod: { type: String, required: true },
     payment: { type: Boolean, default: false },
     date: { type: Number, required: true },
+    cancellationReason: { type: String },
     // Shiprocket fields
     shiprocketOrderId: { type: String }, // Add this field
     shipmentId: { type: String },

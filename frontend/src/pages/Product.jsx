@@ -1,11 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams ,useNavigate,useLocation} from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
 import { toast } from 'react-toastify'; // Add this import
 import { motion } from 'framer-motion'; // Add this import
 const Product = () => {
+    const navigate = useNavigate();
     const { productId } = useParams(); // Change from id to productId to match route param
     const { products, addToCart, currency, cartItems } = useContext(ShopContext);
     const [selectedSize, setSelectedSize] = useState('');
@@ -223,38 +224,105 @@ const Product = () => {
                     </div>
 
                     <div className='bg-white p-6 rounded-lg shadow-lg'>
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={!selectedSize || quantityLeft === 0}
-                            className={`
-                                w-full transition-all duration-300 rounded-lg font-medium py-3.5 px-8
-                                ${!selectedSize 
-                                    ? 'bg-gray-800 text-white hover:bg-gray-700' 
-                                    : quantityLeft === 0 
-                                        ? 'bg-red-500 text-white cursor-not-allowed opacity-75'
-                                        : 'bg-[#00BFAE] text-white hover:bg-[#00A38B] transform hover:scale-[1.02]'
-                                }
-                                disabled:bg-gray-400 disabled:cursor-not-allowed
-                                flex items-center justify-center gap-2 shadow-lg
-                            `}
-                        >
-                            {!selectedSize ? (
-                                <>
-                                    <span className="animate-bounce">👆</span>
-                                    SELECT SIZE
-                                </>
-                            ) : quantityLeft === 0 ? (
-                                <>
-                                    <span className="animate-pulse">⚠️</span>
-                                    OUT OF STOCK
-                                </>
-                            ) : (
-                                <>
-                                    <span className="animate-bounce">🛒</span>
-                                    ADD TO CART
-                                </>
-                            )}
-                        </button>
+                    {!selectedSize ? (
+    // Select Size Button
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className="w-full py-3.5 px-8 bg-gray-800 text-white rounded-lg font-medium 
+                shadow-lg hover:shadow-xl hover:bg-gray-700
+                transition-all duration-300 
+                flex items-center justify-center gap-2"
+    >
+      <span className="animate-bounce">👆</span>
+      SELECT SIZE
+    </motion.button>
+  ) : quantityLeft === 0 ? (
+    // Out of Stock Button
+    <motion.button
+      disabled
+      className="w-full py-3.5 px-8 bg-red-500 text-white rounded-lg font-medium 
+                opacity-75 cursor-not-allowed
+                flex items-center justify-center gap-2"
+    >
+      <span className="animate-pulse">⚠️</span>
+      OUT OF STOCK
+    </motion.button>
+  ) : (
+    // Add to Cart and Buy Now Buttons
+    <div className="flex flex-col sm:flex-row gap-4 w-full">
+      <motion.button
+        onClick={handleAddToCart}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="flex-1 py-3.5 px-8 bg-gradient-to-r from-[#00BFAE] to-[#00A38B] text-white rounded-lg font-medium 
+                  shadow-lg hover:shadow-xl hover:brightness-110
+                  transition-all duration-300 
+                  flex items-center justify-center gap-2"
+      >
+        <span className="animate-bounce">🛒</span>
+        ADD TO CART
+      </motion.button>
+
+      <motion.button
+    onClick={() => {
+        if (!selectedSize) {
+            toast.error('Please select a size first!');
+            return;
+        }
+        
+        if (quantityLeft <= 0) {
+            toast.error('Selected size is out of stock!');
+            return;
+        }
+
+        // Calculate effective price considering discounts
+        const effectivePrice = productData.discount 
+            ? productData.discount.discountType === 'percentage'
+                ? productData.price * (1 - productData.discount.discountValue / 100)
+                : productData.price - productData.discount.discountValue
+            : productData.price;
+
+        // Create order item object
+        const orderItem = {
+            _id: productData._id,
+            name: productData.name,
+            image: productData.image,
+            price: effectivePrice,
+            size: selectedSize,
+            quantity: 1,
+            discount: productData.discount || null,
+            directBuy: true
+        };
+
+        // Add to cart first to maintain stock tracking
+        addToCart(productData._id, selectedSize).then(() => {
+            // Navigate to place-order with the item
+            navigate('/place-order', { 
+                state: { 
+                    directBuy: true,
+                    orderItems: [orderItem],
+                    amount: effectivePrice + 150 // Adding delivery fee
+                } 
+            });
+        });
+    }}
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    disabled={!selectedSize || quantityLeft <= 0}
+    className={`
+        flex-1 py-3.5 px-8 bg-gradient-to-r from-[#A17DFF] to-[#8B64E5] text-white rounded-lg font-medium 
+        shadow-lg hover:shadow-xl hover:brightness-110
+        transition-all duration-300
+        flex items-center justify-center gap-2
+        ${(!selectedSize || quantityLeft <= 0) ? 'opacity-50 cursor-not-allowed' : ''}
+    `}
+>
+    <span className="animate-bounce">🚀</span>
+    BUY NOW
+</motion.button>
+    </div>
+  )}
 
                         {/* Product Information */}
                         <div className='mt-8 border-t border-gray-200 pt-6'>

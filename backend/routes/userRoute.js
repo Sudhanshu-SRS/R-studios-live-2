@@ -12,6 +12,8 @@ import {
   getUserProfile,
   updateUserProfile,
   googleAuth,
+  getPincodeDetails,
+  
 } from '../controllers/userController.js';
 
 import authUser from '../middleware/auth.js';
@@ -30,5 +32,6 @@ userRouter.get('/profile', authUser, getUserProfile);
 userRouter.put('/profile/update', authUser, updateUserProfile); // Add this line
 userRouter.post('/google-auth', googleAuth);
 userRouter.post('/admin', adminLogin);
+userRouter.get('/pincode/:pincode', getPincodeDetails);
 
 export default userRouter;

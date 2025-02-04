@@ -5,6 +5,7 @@ import razorpay from 'razorpay'
 import { sendEmail } from '../util/email.js';
 import productModel from "../models/productModel.js";
 import shiprocketService from '../services/shiprocket.js';
+import whatsAppService from '../services/whatsappService.js';
 
 // global variables
 const currency = 'inr'
@@ -17,6 +18,7 @@ const razorpayInstance = new razorpay({
     key_id : process.env.RAZORPAY_KEY_ID,
     key_secret : process.env.RAZORPAY_KEY_SECRET,
 })
+
 
 // Add this function to send order confirmation emails
 const sendOrderEmails = async (orderDetails, items, transactionId = null) => {
@@ -192,11 +194,33 @@ const sendOrderEmails = async (orderDetails, items, transactionId = null) => {
             subject: `Order Confirmation - R-Studio #${orderDetails._id}`,
             html: customerEmailHtml
         });
+  // Add WhatsApp notification
+  if (orderDetails.address?.phone) {
+    console.log('Sending WhatsApp notification to:', orderDetails.address.phone);
+    
+    try {
+      console.log('Sending WhatsApp notification for order:', {
+          phone: orderDetails.address.phone,
+          name: orderDetails.address.firstName,
+          orderId: orderDetails._id
+      });
 
-    } catch (error) {
-        console.error('Error sending order emails:', error);
+      const result = await whatsAppService.sendOrderConfirmation(  // Changed to sendOrderConfirmation
+        orderDetails.address.phone,
+        orderDetails  // Pass the entire orderDetails object
+    );
+        console.log('WhatsApp notification sent:', result);
+    } catch (whatsappError) {
+        console.error('WhatsApp notification failed:', whatsappError);
+        // Continue even if WhatsApp fails
     }
+}
+} catch (error) {
+console.error('Error sending notifications:', error);
+}
 };
+
+
 
 // Function to update product sales data
 const updateProductSalesData = async (item) => {
@@ -486,31 +510,7 @@ const placeOrderRazorpay = async (req, res) => {
         const newOrder = new orderModel(orderData);
         await newOrder.save();
 
-        // Create Shiprocket order
-        try {
-            console.log('Creating Shiprocket order for:', newOrder);
-            
-            const shipmentResponse = await shiprocketService.createOrder(newOrder);
-            console.log('Shiprocket response:', shipmentResponse);
-
-            if (shipmentResponse?.shipment_id) {
-                newOrder.shipmentId = shipmentResponse.shipment_id;
-                newOrder.shiprocketOrderId = shipmentResponse.shiprocket_order_id;
-                newOrder.awbCode = shipmentResponse.awb_code;
-                newOrder.courierName = shipmentResponse.courier_name;
-                newOrder.trackingUrl = shipmentResponse.awb_code ? 
-                    `https://shiprocket.co/tracking/${shipmentResponse.awb_code}` : null;
-                await newOrder.save();
-
-                console.log('Order updated with Shiprocket details');
-            } else {
-                console.error('Missing shipment_id in Shiprocket response');
-            }
-        } catch (error) {
-            console.error('Shiprocket creation error:', error.response?.data || error);
-            // Continue with order creation even if Shiprocket fails
-        }
-
+      
         const options = {
             amount: amount * 100,
             currency: currency.toUpperCase(),
@@ -547,7 +547,33 @@ const verifyRazorpay = async (req, res) => {
                 },
                 { new: true }
             );
+       // Create Shiprocket order
+       try {
+        console.log('Creating Shiprocket order with details:', {
+            orderId: order._id,
+            address: order.address,
+            items: order.items
+        });
+        
+        const shipmentResponse = await shiprocketService.createOrder(order);
+        console.log('Shiprocket response:', shipmentResponse);
 
+        if (shipmentResponse?.shipment_id) {
+            // Update order with shipping details
+            order.shipmentId = shipmentResponse.shipment_id;
+            order.shiprocketOrderId = shipmentResponse.shiprocket_order_id;
+            order.awbCode = shipmentResponse.awb_code;
+            order.courierName = shipmentResponse.courier_name;
+            order.trackingUrl = shipmentResponse.awb_code ? 
+                `https://shiprocket.co/tracking/${shipmentResponse.awb_code}` : null;
+            await order.save();
+            console.log('Order updated with Shiprocket details');
+        }
+    } catch (error) {
+        console.error('Shiprocket creation error:', error.response?.data || error);
+    }
+
+    
             // Update product stock
             await updateProductStock(order.items);
 
@@ -744,6 +770,33 @@ const updateStatus = async (req, res) => {
                 html: packingEmailHtml
             });
         }
+        // Add WhatsApp notification
+if (order.address?.phone) {
+  try {
+      console.log('Sending WhatsApp notification for order:', {
+          phone: order.address.phone,
+          name: order.address.firstName,
+          orderId: order._id
+      });
+
+      const result = await whatsAppService.sendOrderStatusUpdate( // Use the correct method
+          order.address.phone,
+          order.address.firstName || 'Customer',
+          order._id.toString(),
+          'Packing',
+          'We have started packing your order and will notify you once it ships.',
+          null // tracking URL will be added when shipping is created
+      );
+
+      if (result) {
+          console.log('WhatsApp packing notification sent successfully');
+      } else {
+          console.error('WhatsApp notification failed to send');
+      }
+  } catch (whatsappError) {
+      console.error('WhatsApp packing notification failed:', whatsappError);
+  }
+}
 
         order.status = status;
         await order.save();
@@ -965,6 +1018,21 @@ const cancelOrder = async (req, res) => {
             console.error('Failed to send cancellation email:', emailError);
             // Continue with cancellation even if email fails
         }
+          // Send WhatsApp notification
+        if (order.address?.phone) {
+          try {
+              await whatsAppService.sendOrderCancellationNotification(
+                  order.address.phone,
+                  {
+                      _id: order._id,
+                      amount: order.amount
+                  },
+                  reason
+              );
+          } catch (whatsappError) {
+              console.error('WhatsApp cancellation notification failed:', whatsappError);
+          }
+      }
 
         res.json({
             success: true,
@@ -979,6 +1047,106 @@ const cancelOrder = async (req, res) => {
         });
     }
 };
+const TRACKING_CACHE = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const getOrderTracking = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = await orderModel.findById(orderId);
+        
+        // Check cache first
+        const cached = TRACKING_CACHE.get(order.awbCode);
+        if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+            return res.json({
+                success: true,
+                tracking: cached.data,
+                cached: true
+            });
+        }
+
+        const trackingDetails = await shiprocketService.getTracking(order.awbCode);
+        
+        // Update cache
+        TRACKING_CACHE.set(order.awbCode, {
+            timestamp: Date.now(),
+            data: trackingDetails
+        });
+
+        res.json({
+            success: true,
+            tracking: trackingDetails,
+            cached: false
+        });
+    } catch (error) {
+        console.error('Tracking fetch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch tracking details'
+        });
+    }
+};
+
+const sendTrackingWhatsApp = async (req, res) => {
+  try {
+      const { orderId } = req.params;
+      const order = await orderModel.findById(orderId);
+      
+      if (!order || !order.awbCode) {
+          return res.status(404).json({
+              success: false,
+              message: 'Order or tracking details not found'
+          });
+      }
+
+      if (!order.address?.phone) {
+          return res.status(400).json({
+              success: false,
+              message: 'No phone number found for customer'
+          });
+      }
+
+      // Get latest tracking details
+      const trackingDetails = await shiprocketService.getTracking(order.awbCode);
+
+      // Format expected delivery date
+      const etd = trackingDetails.tracking_data?.etd 
+          ? new Date(trackingDetails.tracking_data.etd).toLocaleDateString()
+          : 'Pending';
+
+      // Send WhatsApp message
+      const sent = await whatsAppService.sendTrackingUpdate(
+          order.address.phone,
+          order._id.toString(),
+          order.courierName,
+          order.awbCode,
+          etd,
+          trackingDetails.current_status || 'Pending'
+      );
+
+      if (sent) {
+          // Update order to mark notification as sent
+          order.trackingNotificationSent = true;
+          order.lastTrackingNotification = new Date();
+          await order.save();
+
+          res.json({
+              success: true,
+              message: 'Tracking update sent successfully'
+          });
+      } else {
+          throw new Error('Failed to send WhatsApp notification');
+      }
+
+  } catch (error) {
+      console.error('Send tracking WhatsApp error:', error);
+      res.status(500).json({
+          success: false,
+          message: error.message || 'Failed to send tracking update'
+      });
+  }
+};
+
 
 export {
     verifyRazorpay,
@@ -991,4 +1159,7 @@ export {
     updateStatus,
     cancelOrder, // Add this export
     updateProductStock,
+    sendOrderEmails,
+    getOrderTracking,
+    sendTrackingWhatsApp,
 }

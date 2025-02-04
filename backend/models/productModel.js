@@ -127,6 +127,22 @@ productSchema.methods.addStock = function(size, quantity) {
     return false;
 };
 
+// Add method to restore cancelled stock
+productSchema.methods.restoreCancelledStock = async function(size, quantity) {
+    const sizeData = this.sizes.find(s => s.size === size);
+    if (sizeData) {
+        sizeData.quantity += quantity;
+        this.inStock = true;
+        
+        // Log stock restoration
+        console.log(`Restored ${quantity} units to ${this.name} (${size})`);
+        
+        await this.save();
+        return true;
+    }
+    return false;
+};
+
 // Virtual for total stock
 productSchema.virtual('totalStock').get(function() {
     return this.sizes.reduce((total, size) => total + size.quantity, 0);

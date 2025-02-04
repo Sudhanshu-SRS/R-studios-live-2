@@ -123,13 +123,37 @@ class ShiprocketService {
     // Similarly update other methods
     async getTracking(awbCode) {
         return this.makeAuthenticatedRequest(async (token) => {
-            const response = await axios.get(
-                `${this.baseURL}/courier/track/awb/${awbCode}`,
-                {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }
-            );
-            return response.data;
+            try {
+                const response = await axios.get(
+                    `${this.baseURL}/courier/track/awb/${awbCode}`,
+                    {
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                
+                const trackingData = response.data.tracking_data;
+                
+                return {
+                    current_status: trackingData.track_status,
+                    tracking_data: {
+                        etd: trackingData.etd,
+                        shipment_track: trackingData.shipment_track?.map(track => ({
+                            status: track.status,
+                            date: track.date,
+                            activity: track.activity || '',
+                            location: track.location || ''
+                        })) || [],
+                        courier_name: trackingData.courier_name,
+                        awb_code: trackingData.awb_code
+                    }
+                };
+            } catch (error) {
+                console.error('Shiprocket tracking error:', error);
+                throw error;
+            }
         });
     }
 
